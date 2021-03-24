@@ -5,10 +5,17 @@ export { RecoilProvider } from './provider';
 export type { PromiseStatus, PicoValueSubscription } from './value';
 export { PicoValue } from './value';
 export type {
+	SetPicoState,
+	ResetPicoState,
+	GetPicoState,
 	SelectorGetterProps,
+	SelectorWriterProps,
 	SelectorSource,
-	SelectorConfig,
-	SelectorFamilyConfig
+	SelectorWriter,
+	ReadOnlySelectorConfig,
+	ReadWriteSelectorConfig,
+	ReadWriteSelectorFamilyConfig,
+	ReadOnlySelectorFamilyConfig
 } from './selectors';
 export { selector, selectorFamily } from './selectors';
 export type { PicoSetter, PicoState } from './hooks';

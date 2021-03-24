@@ -1,41 +1,55 @@
 import { useContext, useEffect, useState } from 'react';
-import { InternalPicoHandler } from './atoms';
+import {
+	InternalReadWritePicoHandler,
+	InternalReadOnlyPicoHandler
+} from './handler';
 import { InternalPicoContext } from './provider';
-import { PicoValue } from './value';
+import { PicoValue, PromiseStatus } from './value';
 
 export type PicoSetter<TState> = (value: TState) => void;
 export type PicoState<TState> = [TState, PicoSetter<TState>];
 
 export const usePicoValue = function <TState>(
-	handler: InternalPicoHandler<TState>
+	handler: InternalReadOnlyPicoHandler<TState>
 ): TState {
-	const { value, subscribe, unsubscribe, promise } = useRawRecoilValue(
+	const { value, subscribe, unsubscribe, promise, error } = useRawRecoilValue(
 		handler
 	);
 
-	const [state, setState] = useState<TState>(value as TState);
+	const [latestValue, setLatestValue] = useState<TState>(value as TState);
+	const [latestPromise, setLatestPromise] = useState<
+		(Promise<TState> & { status: PromiseStatus }) | undefined
+	>(promise);
+	const [latestError, setLatestError] = useState<unknown>(error);
 
 	useEffect(() => {
-		const callback = setState;
+		const callback = (
+			value: TState,
+			promise: (Promise<TState> & { status: PromiseStatus }) | undefined,
+			error: unknown
+		) => {
+			setLatestValue(value);
+			setLatestPromise(promise), setLatestError(error);
+		};
 
 		subscribe(callback);
 
 		return () => unsubscribe(callback);
 	}, [handler, subscribe, unsubscribe]);
 
-	if (promise && promise.status === 'pending') {
-		throw promise;
+	if (latestPromise && latestPromise.status === 'pending') {
+		throw latestPromise;
 	}
 
-	if (promise && promise.status === 'rejected') {
-		throw 'error';
+	if (latestPromise && latestPromise.status === 'rejected') {
+		throw latestError;
 	}
 
-	return state;
+	return latestValue;
 };
 
 export const useSetPicoValue = function <TState>(
-	handler: InternalPicoHandler<TState>
+	handler: InternalReadWritePicoHandler<TState>
 ): PicoSetter<TState> {
 	const store = useContext(InternalPicoContext);
 
@@ -43,13 +57,13 @@ export const useSetPicoValue = function <TState>(
 };
 
 export const usePicoState = function <TState>(
-	handler: InternalPicoHandler<TState>
+	handler: InternalReadWritePicoHandler<TState>
 ): PicoState<TState> {
 	return [usePicoValue(handler), useSetPicoValue(handler)];
 };
 
 export const useRawRecoilValue = function <TState>(
-	handler: InternalPicoHandler<TState>
+	handler: InternalReadOnlyPicoHandler<TState>
 ): PicoValue<TState> {
 	const store = useContext(InternalPicoContext);
 

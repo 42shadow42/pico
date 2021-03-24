@@ -2,7 +2,11 @@ import isPromise from 'is-promise';
 
 export type PromiseStatus = 'pending' | 'resolved' | 'rejected';
 
-export type PicoValueSubscription<TState> = (value: TState) => void;
+export type PicoValueSubscription<TState> = (
+	value: TState,
+	promise: (Promise<TState> & { status: PromiseStatus }) | undefined,
+	error: unknown
+) => void;
 
 export class PicoValue<TState> {
 	value: TState | undefined;
@@ -29,6 +33,7 @@ export class PicoValue<TState> {
 	private updatePromise = (promise: Promise<TState>) => {
 		const status: PromiseStatus = 'pending';
 		this.promise = Object.assign(promise, { status });
+		this.notify();
 
 		promise.then((value: TState) => {
 			// Ignore results that aren't currently pending.
@@ -37,6 +42,7 @@ export class PicoValue<TState> {
 			}
 			this.promise.status = 'resolved';
 			this.value = value;
+			this.notify();
 		});
 
 		promise.catch((error: unknown) => {
@@ -77,6 +83,6 @@ export class PicoValue<TState> {
 
 	notify = () =>
 		new Set(this.subscribers).forEach((callback) =>
-			callback(this.value as TState)
+			callback(this.value as TState, this.promise, this.error)
 		);
 }

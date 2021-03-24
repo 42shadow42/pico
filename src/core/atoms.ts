@@ -1,14 +1,10 @@
+import { InternalReadWritePicoHandler } from './handler';
 import { InternalTreeState } from './tree-state';
 import { PicoValue } from './value';
 
 export interface AtomConfig<TState> {
 	key: string;
 	default: TState;
-}
-
-export interface InternalPicoHandler<TState> {
-	read: (treeState: InternalTreeState) => PicoValue<TState>;
-	save: (treeState: InternalTreeState, value: TState) => void;
 }
 
 function saveState<TState>(
@@ -36,12 +32,17 @@ function readState<TState>(
 export function atom<TState>({
 	key,
 	default: defaultValue
-}: AtomConfig<TState>): InternalPicoHandler<TState> {
+}: AtomConfig<TState>): InternalReadWritePicoHandler<TState> {
 	return {
 		read: (treeState: InternalTreeState): PicoValue<TState> =>
 			readState<TState>(treeState, key, defaultValue),
 		save: (treeState: InternalTreeState, value: TState) =>
-			saveState(treeState, key, value)
+			saveState(treeState, key, value),
+		reset: (treeState: InternalTreeState) => {
+			{
+				saveState(treeState, key, defaultValue);
+			}
+		}
 	};
 }
 

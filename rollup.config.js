@@ -24,7 +24,9 @@ export default {
 		externals({
 			includeDependencies: true
 		}),
-		typescript(),
+		typescript({
+			useTsconfigDeclarationDir: true
+		}),
 		commonjs()
 	]
 };

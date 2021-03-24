@@ -4,7 +4,7 @@
   "description": "Simple state management library for react",
   "main": "lib/cjs/index.js",
   "module": "lib/es/index.js",
-  "typings": "lib/es",
+  "typings": "lib/src/index.d.ts",
   "scripts": {
     "build": "rollup -c",
     "test": "echo \"Error: no test specified\" && exit 1"

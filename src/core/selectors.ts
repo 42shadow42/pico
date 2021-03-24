@@ -15,9 +15,13 @@ export type ResetPicoState = <TState>(
 export type GetPicoState = <TState>(
 	handler: InternalReadOnlyPicoHandler<TState>
 ) => TState | undefined;
+export type GetAsyncPicoState = <TState>(
+	handler: InternalReadOnlyPicoHandler<TState>
+) => Promise<TState | undefined>;
 
 export interface SelectorGetterProps {
 	get: GetPicoState;
+	getAsync: GetAsyncPicoState;
 }
 export type SelectorWriterProps = SelectorGetterProps & {
 	set: SetPicoState;
@@ -71,6 +75,13 @@ const createReader = <TState>(key: string, get: SelectorSource<TState>) => (
 				const recoilValue = handler.read(treeState);
 				dependencies.add(recoilValue as PicoValue<unknown>);
 				return recoilValue.value;
+			},
+			getAsync: (handler) => {
+				const recoilValue = handler.read(treeState);
+				dependencies.add(recoilValue as PicoValue<unknown>);
+				return (
+					recoilValue.promise || Promise.resolve(recoilValue.value)
+				);
 			}
 		});
 
@@ -106,12 +117,12 @@ const createWriter = <TState>(set: SelectorWriter<TState>) => (
 ) => {
 	set(
 		{
-			get: (handler: InternalReadOnlyPicoHandler<any>) =>
-				handler.read(treeState).value,
-			set: (handler: InternalReadWritePicoHandler<any>, value: any) =>
-				handler.save(treeState, value),
-			reset: (handler: InternalReadWritePicoHandler<any>) =>
-				handler.reset(treeState)
+			get: (handler) => handler.read(treeState).value,
+			getAsync: (handler) =>
+				handler.read(treeState).promise ||
+				Promise.resolve(handler.read(treeState).value),
+			set: (handler, value) => handler.save(treeState, value),
+			reset: (handler) => handler.reset(treeState)
 		},
 		value
 	);
@@ -121,12 +132,12 @@ const createReset = (reset: SelectorReset) => (
 	treeState: InternalTreeState
 ) => {
 	reset({
-		get: (handler: InternalReadOnlyPicoHandler<any>) =>
-			handler.read(treeState).value,
-		set: (handler: InternalReadWritePicoHandler<any>, value: any) =>
-			handler.save(treeState, value),
-		reset: (handler: InternalReadWritePicoHandler<any>) =>
-			handler.reset(treeState)
+		get: (handler) => handler.read(treeState).value,
+		getAsync: (handler) =>
+			handler.read(treeState).promise ||
+			Promise.resolve(handler.read(treeState).value),
+		set: (handler, value) => handler.save(treeState, value),
+		reset: (handler) => handler.reset(treeState)
 	});
 };
 

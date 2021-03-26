@@ -2,8 +2,8 @@ import {
 	InternalReadOnlyPicoHandler,
 	InternalReadWritePicoHandler
 } from './handler';
-import { InternalTreeState } from './tree-state';
-import { PicoValue, PicoValueSubscription } from './value';
+import { PicoStore } from './store';
+import { PicoValue, PicoValueSubscriber } from './value';
 
 export type SetPicoState = <TState>(
 	handler: InternalReadWritePicoHandler<TState>,
@@ -61,10 +61,10 @@ export type ReadWriteSelectorFamilyConfig<
 };
 
 const createReader = <TState>(key: string, get: SelectorSource<TState>) => (
-	treeState: InternalTreeState
+	store: PicoStore
 ): PicoValue<TState> => {
-	if (treeState[key]) {
-		return treeState[key] as PicoValue<TState>;
+	if (store.treeState[key]) {
+		return store.treeState[key] as PicoValue<TState>;
 	}
 
 	const loader = () => {
@@ -72,12 +72,12 @@ const createReader = <TState>(key: string, get: SelectorSource<TState>) => (
 
 		const value = get({
 			get: (handler) => {
-				const recoilValue = handler.read(treeState);
+				const recoilValue = handler.read(store);
 				dependencies.add(recoilValue as PicoValue<unknown>);
 				return recoilValue.value;
 			},
 			getAsync: (handler) => {
-				const recoilValue = handler.read(treeState);
+				const recoilValue = handler.read(store);
 				dependencies.add(recoilValue as PicoValue<unknown>);
 				return (
 					recoilValue.promise || Promise.resolve(recoilValue.value)
@@ -92,52 +92,52 @@ const createReader = <TState>(key: string, get: SelectorSource<TState>) => (
 	};
 
 	const { value, dependencies } = loader();
-	const picoValue = new PicoValue(value, dependencies);
-	const watcher: PicoValueSubscription<unknown> = () => {
-		picoValue
-			.getDependencies()
-			.forEach((dependency) => dependency.unsubscribe(watcher));
-		const { value, dependencies } = loader();
-		picoValue.updateValue(value, dependencies);
-		dependencies.forEach((dependency) => dependency.subscribe(watcher));
+	const picoValue = new PicoValue(key, value, dependencies);
+	const watcher: PicoValueSubscriber = {
+		onUpdated: () => {
+			picoValue
+				.getDependencies()
+				.forEach((dependency) => dependency.unsubscribe(watcher));
+			const { value, dependencies } = loader();
+			picoValue.updateValue(value, dependencies);
+			dependencies.forEach((dependency) => dependency.subscribe(watcher));
+		}
 	};
 
 	dependencies.forEach((dependency) => {
 		dependency.subscribe(watcher);
 	});
 
-	treeState[key] = picoValue as PicoValue<unknown>;
+	store.treeState[key] = picoValue as PicoValue<unknown>;
 
 	return picoValue;
 };
 
 const createWriter = <TState>(set: SelectorWriter<TState>) => (
-	treeState: InternalTreeState,
+	store: PicoStore,
 	value: TState
 ) => {
 	set(
 		{
-			get: (handler) => handler.read(treeState).value,
+			get: (handler) => handler.read(store).value,
 			getAsync: (handler) =>
-				handler.read(treeState).promise ||
-				Promise.resolve(handler.read(treeState).value),
-			set: (handler, value) => handler.save(treeState, value),
-			reset: (handler) => handler.reset(treeState)
+				handler.read(store).promise ||
+				Promise.resolve(handler.read(store).value),
+			set: (handler, value) => handler.save(store, value),
+			reset: (handler) => handler.reset(store)
 		},
 		value
 	);
 };
 
-const createReset = (reset: SelectorReset) => (
-	treeState: InternalTreeState
-) => {
+const createReset = (reset: SelectorReset) => (store: PicoStore) => {
 	reset({
-		get: (handler) => handler.read(treeState).value,
+		get: (handler) => handler.read(store).value,
 		getAsync: (handler) =>
-			handler.read(treeState).promise ||
-			Promise.resolve(handler.read(treeState).value),
-		set: (handler, value) => handler.save(treeState, value),
-		reset: (handler) => handler.reset(treeState)
+			handler.read(store).promise ||
+			Promise.resolve(handler.read(store).value),
+		set: (handler, value) => handler.save(store, value),
+		reset: (handler) => handler.reset(store)
 	});
 };
 

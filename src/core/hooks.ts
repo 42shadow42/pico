@@ -4,7 +4,7 @@ import {
 	InternalReadOnlyPicoHandler
 } from './handler';
 import { InternalPicoContext } from './provider';
-import { PicoValue, PromiseStatus } from './value';
+import { PicoValue, PicoValueSubscriber, PromiseStatus } from './value';
 
 export type PicoSetter<TState> = (value: TState) => void;
 export type PicoState<TState> = [TState, PicoSetter<TState>];
@@ -12,8 +12,10 @@ export type PicoState<TState> = [TState, PicoSetter<TState>];
 export const usePicoValue = function <TState>(
 	handler: InternalReadOnlyPicoHandler<TState>
 ): TState {
-	const { value, subscribe, unsubscribe, promise, error } = useRawRecoilValue(
-		handler
+	const store = useContext(InternalPicoContext);
+
+	const { value, subscribe, unsubscribe, promise, error } = handler.read(
+		store
 	);
 
 	const [latestValue, setLatestValue] = useState<TState>(value as TState);
@@ -23,18 +25,17 @@ export const usePicoValue = function <TState>(
 	const [latestError, setLatestError] = useState<unknown>(error);
 
 	useEffect(() => {
-		const callback = (
-			value: TState,
-			promise: (Promise<TState> & { status: PromiseStatus }) | undefined,
-			error: unknown
-		) => {
-			setLatestValue(value);
-			setLatestPromise(promise), setLatestError(error);
+		const subcriber: PicoValueSubscriber = {
+			onUpdated: () => {
+				const { value, promise, error } = handler.read(store);
+				setLatestValue(value as TState);
+				setLatestPromise(promise), setLatestError(error);
+			}
 		};
 
-		subscribe(callback);
+		subscribe(subcriber);
 
-		return () => unsubscribe(callback);
+		return () => unsubscribe(subcriber);
 	}, [handler, subscribe, unsubscribe]);
 
 	if (latestPromise && latestPromise.status === 'pending') {

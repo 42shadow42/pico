@@ -1,15 +1,15 @@
-import { InternalTreeState } from './tree-state';
+import { PicoStore } from './store';
 import { PicoValue } from './value';
 
 export interface InternalReadOnlyPicoHandler<TState> {
-	read: (treeState: InternalTreeState) => PicoValue<TState>;
+	read: (store: PicoStore) => PicoValue<TState>;
 }
 
 export type InternalReadWritePicoHandler<
 	TState
 > = InternalReadOnlyPicoHandler<TState> & {
-	save: (treeState: InternalTreeState, value: TState) => void;
-	reset: (treeState: InternalTreeState) => void;
+	save: (store: PicoStore, value: TState) => void;
+	reset: (store: PicoStore) => void;
 };
 
 export function isInternalReadOnlyPicoHandler<TState>(

@@ -1,11 +1,11 @@
 import { createContext, ReactNode } from 'react';
-import { InternalTreeState } from './tree-state';
+import { PicoStore } from './store';
 
-export const InternalPicoContext = createContext<InternalTreeState>({});
+export const InternalPicoContext = createContext<PicoStore>(new PicoStore());
 
 export interface RecoilProviderProps {
 	children: ReactNode;
-	tree: InternalTreeState;
+	tree: PicoStore;
 }
 
 export const RecoilProvider = function RecoilProvider({

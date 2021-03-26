@@ -3,7 +3,7 @@ import {
 	InternalReadWritePicoHandler,
 	isInternalReadOnlyPicoHandler
 } from './handler';
-import { InternalTreeState } from './tree-state';
+import { InternalTreeState, PicoStore } from './store';
 import { PicoValue } from './value';
 
 export interface AtomConfig<TState> {
@@ -12,58 +12,65 @@ export interface AtomConfig<TState> {
 }
 
 function resetState<TState>(
-	state: InternalTreeState,
+	store: PicoStore,
 	key: string,
 	defaultValue: TState | InternalReadOnlyPicoHandler<TState>
 ) {
 	let value: TState | Promise<TState> | undefined;
 	if (isInternalReadOnlyPicoHandler<TState>(defaultValue)) {
-		const picoValue = defaultValue.read(state);
+		const picoValue = defaultValue.read(store);
 		value = picoValue.promise || picoValue.value;
 	} else {
 		value = defaultValue;
 	}
-	state[key]
-		? state[key].updateValue(value)
-		: (state[key] = new PicoValue<unknown>(value));
-	state[key].notify();
+	const picoValue = store.treeState[key] as PicoValue<TState> | undefined;
+	picoValue
+		? picoValue.updateValue(value as TState | Promise<TState>)
+		: store.createPicoValue(key, value as TState);
 }
 
 function saveState<TState>(
-	state: InternalTreeState,
+	store: PicoStore,
 	key: string,
 	value: TState | InternalReadOnlyPicoHandler<TState>
 ) {
 	let newValue: TState | Promise<TState> | undefined;
 	let dependencies = new Set<PicoValue<unknown>>();
 	if (isInternalReadOnlyPicoHandler<TState>(value)) {
-		const dependency = value.read(state);
+		const dependency = value.read(store);
 		newValue = dependency.promise || dependency.value;
 		dependencies.add(dependency as PicoValue<unknown>);
 	} else {
 		newValue = value;
 	}
-	state[key]
-		? state[key].updateValue(newValue, dependencies)
-		: (state[key] = new PicoValue<unknown>(newValue, dependencies));
+	const picoValue = store.treeState[key] as PicoValue<TState> | undefined;
+	picoValue
+		? picoValue.updateValue(
+				newValue as TState | Promise<TState>,
+				dependencies
+		  )
+		: new PicoValue<unknown>(key, newValue, dependencies);
 }
 
 function readState<TState>(
-	state: InternalTreeState,
+	store: PicoStore,
 	key: string,
 	defaultValue: TState | InternalReadOnlyPicoHandler<TState>
 ) {
 	let value: TState | Promise<TState> | undefined;
 	if (isInternalReadOnlyPicoHandler<TState>(defaultValue)) {
-		const picoValue = defaultValue.read(state);
+		const picoValue = defaultValue.read(store);
 		value = picoValue.promise || picoValue.value;
 	} else {
 		value = defaultValue;
 	}
-	if (!state[key]) {
-		state[key] = new PicoValue<unknown>(value);
+	if (!store.treeState[key]) {
+		return store.createPicoValue<TState>(
+			key,
+			value as TState | Promise<TState>
+		);
 	}
-	return state[key] as PicoValue<TState>;
+	return store.treeState[key] as PicoValue<TState>;
 }
 
 export function atom<TState>({
@@ -71,12 +78,10 @@ export function atom<TState>({
 	default: defaultValue
 }: AtomConfig<TState>): InternalReadWritePicoHandler<TState> {
 	return {
-		read: (treeState: InternalTreeState): PicoValue<TState> =>
-			readState<TState>(treeState, key, defaultValue),
-		save: (treeState: InternalTreeState, value: TState) =>
-			saveState(treeState, key, value),
-		reset: (treeState: InternalTreeState) =>
-			resetState(treeState, key, defaultValue)
+		read: (store: PicoStore): PicoValue<TState> =>
+			readState<TState>(store, key, defaultValue),
+		save: (store: PicoStore, value: TState) => saveState(store, key, value),
+		reset: (store: PicoStore) => resetState(store, key, defaultValue)
 	};
 }
 

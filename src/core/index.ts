@@ -2,7 +2,7 @@ export type { AtomConfig } from './atoms';
 export { atom, atomFamily } from './atoms';
 export type { RecoilProviderProps } from './provider';
 export { RecoilProvider } from './provider';
-export type { PromiseStatus, PicoValueSubscription } from './value';
+export type { PromiseStatus, PicoValueSubscriber } from './value';
 export { PicoValue } from './value';
 export type {
 	SetPicoState,

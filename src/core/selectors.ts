@@ -73,8 +73,8 @@ const createReader = <TState>(key: string, get: SelectorSource<TState>) => (
 	};
 
 	const { value, dependencies } = loader();
-	const picoValue = new PicoValue(key, value, dependencies);
-	const watcher: PicoValueSubscriber = {
+	const picoValue = store.createPicoValue(key, value, [], dependencies);
+	const watcher: PicoValueSubscriber<any> = {
 		onUpdated: () => {
 			picoValue
 				.getDependencies()

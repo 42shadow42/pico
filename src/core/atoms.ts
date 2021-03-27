@@ -5,17 +5,19 @@ import {
 import { PicoStore } from './store';
 import { PicoValue } from './value';
 import { isFunction } from 'lodash';
-import { DefaultValue, ValueUpdater } from './shared';
+import { DefaultValue, PicoStoreEffect, ValueUpdater } from './shared';
 
 export interface AtomConfig<TState> {
 	key: string;
 	default: DefaultValue<TState>;
+	effects?: PicoStoreEffect<TState>[];
 }
 
 function resetState<TState>(
 	store: PicoStore,
 	key: string,
-	defaultValue: DefaultValue<TState>
+	defaultValue: DefaultValue<TState>,
+	effects: PicoStoreEffect<TState>[]
 ) {
 	let value: TState | Promise<TState> | undefined;
 	if (isInternalReadOnlyPicoHandler<TState>(defaultValue)) {
@@ -29,14 +31,19 @@ function resetState<TState>(
 	const picoValue = store.treeState[key] as PicoValue<TState> | undefined;
 	picoValue
 		? picoValue.updateValue(value as TState | Promise<TState>)
-		: store.createPicoValue(key, value as TState);
+		: store.createPicoValue(
+				key,
+				value as TState | Promise<TState>,
+				store.createPicoValueEffects(effects)
+		  );
 }
 
 function saveState<TState>(
 	store: PicoStore,
 	key: string,
 	value: ValueUpdater<TState>,
-	defaultValue: DefaultValue<TState>
+	defaultValue: DefaultValue<TState>,
+	effects: PicoStoreEffect<TState>[]
 ) {
 	let newValue: TState | Promise<TState> | undefined;
 	let dependencies = new Set<PicoValue<unknown>>();
@@ -46,7 +53,7 @@ function saveState<TState>(
 		dependencies.add(dependency as PicoValue<unknown>);
 	} else if (isFunction(value)) {
 		newValue = value(
-			readState<TState>(store, key, defaultValue).value as TState
+			readState<TState>(store, key, defaultValue, effects).value as TState
 		);
 	} else {
 		newValue = value;
@@ -57,13 +64,19 @@ function saveState<TState>(
 				newValue as TState | Promise<TState>,
 				dependencies
 		  )
-		: new PicoValue<unknown>(key, newValue, dependencies);
+		: store.createPicoValue(
+				key,
+				newValue as TState | Promise<TState>,
+				store.createPicoValueEffects(effects),
+				dependencies
+		  );
 }
 
 function readState<TState>(
 	store: PicoStore,
 	key: string,
-	defaultValue: DefaultValue<TState>
+	defaultValue: DefaultValue<TState>,
+	effects: PicoStoreEffect<TState>[]
 ) {
 	let value: TState | Promise<TState> | undefined;
 	if (isInternalReadOnlyPicoHandler<TState>(defaultValue)) {
@@ -77,7 +90,8 @@ function readState<TState>(
 	if (!store.treeState[key]) {
 		return store.createPicoValue<TState>(
 			key,
-			value as TState | Promise<TState>
+			value as TState | Promise<TState>,
+			store.createPicoValueEffects(effects)
 		);
 	}
 	return store.treeState[key] as PicoValue<TState>;
@@ -85,20 +99,24 @@ function readState<TState>(
 
 export function atom<TState>({
 	key,
-	default: defaultValue
+	default: defaultValue,
+	effects = []
 }: AtomConfig<TState>): InternalReadWritePicoHandler<TState> {
 	return {
 		read: (store: PicoStore): PicoValue<TState> =>
-			readState<TState>(store, key, defaultValue),
+			readState<TState>(store, key, defaultValue, effects),
 		save: (store: PicoStore, value: ValueUpdater<TState>) =>
-			saveState(store, key, value, defaultValue),
-		reset: (store: PicoStore) => resetState(store, key, defaultValue)
+			saveState(store, key, value, defaultValue, effects),
+		reset: (store: PicoStore) =>
+			resetState(store, key, defaultValue, effects)
 	};
 }
 
 export function atomFamily<TState, TKey>({
 	key,
-	default: defaultValue
+	default: defaultValue,
+	effects = []
 }: AtomConfig<TState>) {
-	return (id: TKey) => atom({ key: `${key}::${id}`, default: defaultValue });
+	return (id: TKey) =>
+		atom({ key: `${key}::${id}`, default: defaultValue, effects });
 }

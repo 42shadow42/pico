@@ -81,9 +81,14 @@ export const HistoryObserver = ({ children, manual }: HistoryObserverProps) => {
 				);
 			},
 			onAtomDeleting: (key: string): void => {
-				const value = store.treeState[key]?.value;
+				const picoValue = store.treeState[key] as PicoValue<unknown>;
 				history?.internalAddBatchComponent(() =>
-					store.createPicoValue(key, value)
+					store.createPicoValue(
+						key,
+						picoValue.value,
+						picoValue.getEffects(),
+						picoValue.getDependencies()
+					)
 				);
 			},
 			onAtomUpdating: (key: string): void => {

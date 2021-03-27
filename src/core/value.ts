@@ -2,29 +2,53 @@ import isPromise from 'is-promise';
 
 export type PromiseStatus = 'pending' | 'resolved' | 'rejected';
 
-export type ValueUpdatingHandler = (key: string) => void;
-export type ValueUpdatedHandler = (key: string) => void;
+export type ValueCreatedHandler<TState> = (
+	value: PicoValue<TState>,
+	internalKey: string
+) => void;
+export type ValueUpdatingHandler<TState> = (
+	value: PicoValue<TState>,
+	internalKey: string
+) => void;
+export type ValueUpdatedHandler<TState> = (
+	value: PicoValue<TState>,
+	internalKey: string
+) => void;
+export type ValueDeletingHandler<TState> = (
+	value: PicoValue<TState>,
+	internalKey: string
+) => void;
 
-export interface PicoValueSubscriber {
-	onUpdating?: ValueUpdatingHandler;
-	onUpdated?: ValueUpdatedHandler;
+export interface PicoValueSubscriber<TState> {
+	onUpdating?: ValueUpdatingHandler<TState>;
+	onUpdated?: ValueUpdatedHandler<TState>;
+}
+
+export interface PicoValueEffect<TState> {
+	onCreated?: ValueCreatedHandler<TState>;
+	onUpdating?: ValueUpdatingHandler<TState>;
+	onUpdated?: ValueUpdatedHandler<TState>;
+	onDeleting?: ValueDeletingHandler<TState>;
 }
 
 export class PicoValue<TState> {
-	private key: string;
 	value: TState | undefined;
 	promise: (Promise<TState> & { status: PromiseStatus }) | undefined;
 	error: unknown;
 
-	private subscribers = new Set<PicoValueSubscriber>();
+	private key: string;
+	private effects: PicoValueEffect<TState>[];
+	private subscribers = new Set<PicoValueSubscriber<TState>>();
 	private dependencies: Set<PicoValue<unknown>>;
 
 	constructor(
 		key: string,
 		promiseOrValue: TState | Promise<TState>,
+		effects: PicoValueEffect<TState>[],
 		dependencies = new Set<PicoValue<unknown>>()
 	) {
 		this.key = key;
+		this.effects = effects;
 		this.dependencies = dependencies;
 
 		if (isPromise(promiseOrValue)) {
@@ -33,7 +57,17 @@ export class PicoValue<TState> {
 		}
 
 		this.value = promiseOrValue;
+
+		this.effects.forEach(
+			(effect) => effect.onCreated && effect.onCreated(this, this.key)
+		);
 	}
+
+	internalDelete = () => {
+		this.effects.forEach(
+			(effect) => effect.onDeleting && effect.onDeleting(this, this.key)
+		);
+	};
 
 	private updatePromise = (promise: Promise<TState>) => {
 		const status: PromiseStatus = 'pending';
@@ -60,6 +94,8 @@ export class PicoValue<TState> {
 		});
 	};
 
+	getEffects = () => [...this.effects];
+
 	getDependencies = (): Set<PicoValue<unknown>> => {
 		return new Set<PicoValue<unknown>>(this.dependencies);
 	};
@@ -79,25 +115,31 @@ export class PicoValue<TState> {
 		this.onValueUpdated();
 	};
 
-	subscribe = (subscriber: PicoValueSubscriber) => {
+	subscribe = (subscriber: PicoValueSubscriber<TState>) => {
 		this.subscribers.add(subscriber);
 	};
 
-	unsubscribe = (subscriber: PicoValueSubscriber) => {
+	unsubscribe = (subscriber: PicoValueSubscriber<TState>) => {
 		this.subscribers.delete(subscriber);
 	};
 
 	private onValueUpdating = () => {
+		this.effects.forEach(
+			(effect) => effect.onUpdating && effect.onUpdating(this, this.key)
+		);
 		new Set(this.subscribers).forEach(
 			(subscriber) =>
-				subscriber.onUpdating && subscriber.onUpdating(this.key)
+				subscriber.onUpdating && subscriber.onUpdating(this, this.key)
 		);
 	};
 
 	private onValueUpdated = () => {
+		this.effects.forEach(
+			(effect) => effect.onUpdated && effect.onUpdated(this, this.key)
+		);
 		new Set(this.subscribers).forEach(
 			(subscriber) =>
-				subscriber.onUpdated && subscriber.onUpdated(this.key)
+				subscriber.onUpdated && subscriber.onUpdated(this, this.key)
 		);
 	};
 }

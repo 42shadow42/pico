@@ -11,7 +11,8 @@ export type {
 	ResetPicoState,
 	GetPicoState,
 	PicoGetterProps,
-	PicoWriterProps
+	PicoWriterProps,
+	PicoStoreEffect
 } from './shared';
 export type {
 	SelectorSource,

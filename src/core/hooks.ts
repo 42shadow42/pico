@@ -27,9 +27,8 @@ export const usePicoValue = function <TState>(
 	const [latestError, setLatestError] = useState<unknown>(error);
 
 	useEffect(() => {
-		const subcriber: PicoValueSubscriber = {
-			onUpdated: () => {
-				const { value, promise, error } = handler.read(store);
+		const subcriber: PicoValueSubscriber<TState> = {
+			onUpdated: ({ value, promise, error }) => {
 				setLatestValue(value as TState);
 				setLatestPromise(promise), setLatestError(error);
 			}

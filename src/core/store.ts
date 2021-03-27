@@ -1,5 +1,7 @@
 import isPromise from 'is-promise';
-import { PicoValue, PicoValueSubscriber } from './value';
+import { InternalReadOnlyPicoHandler } from './handler';
+import { PicoStoreEffect, PicoWriterProps } from './shared';
+import { PicoValue, PicoValueEffect, PicoValueSubscriber } from './value';
 
 export interface InternalTreeState {
 	[key: string]: PicoValue<unknown> | undefined;
@@ -20,14 +22,14 @@ export interface PicoStoreSubscriber {
 export class PicoStore {
 	treeState: InternalTreeState = {};
 	private subscribers = new Set<PicoStoreSubscriber>();
-	private valueSubscriber: PicoValueSubscriber = {
-		onUpdating: (key: string) => {
+	private valueSubscriber: PicoValueSubscriber<any> = {
+		onUpdating: (value, key: string) => {
 			new Set(this.subscribers).forEach(
 				(subscriber) =>
 					subscriber.onAtomUpdating && subscriber.onAtomUpdating(key)
 			);
 		},
-		onUpdated: (key: string) => {
+		onUpdated: (value, key: string) => {
 			new Set(this.subscribers).forEach(
 				(subscriber) =>
 					subscriber.onAtomUpdated && subscriber.onAtomUpdated(key)
@@ -35,13 +37,42 @@ export class PicoStore {
 		}
 	};
 
+	createPicoValueEffects = <TState>(
+		storeEffects: PicoStoreEffect<TState>[]
+	) => {
+		const picoWriterProps: PicoWriterProps = {
+			get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
+				handler.read(this).value as TState,
+			getAsync: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
+				handler.read(this).promise ||
+				Promise.resolve(handler.read(this).value as TState),
+			set: (handler, value) => handler.save(this, value),
+			reset: (handler) => handler.reset(this)
+		};
+		return storeEffects.map((effect) => {
+			return {
+				onCreated: effect.onCreated?.bind(null, picoWriterProps),
+				onUpdating: effect.onUpdating?.bind(null, picoWriterProps),
+				onUpdated: effect.onUpdated?.bind(null, picoWriterProps),
+				onDeleting: effect.onDeleting?.bind(null, picoWriterProps)
+			};
+		});
+	};
+
 	createPicoValue = <TState>(
 		key: string,
-		valueOrPromise: TState | Promise<TState>
+		valueOrPromise: TState | Promise<TState>,
+		effects: PicoValueEffect<TState>[],
+		dependencies?: Set<PicoValue<unknown>>
 	): PicoValue<TState> => {
-		const picoValue = new PicoValue<unknown>(key, valueOrPromise);
+		const picoValue = new PicoValue<TState>(
+			key,
+			valueOrPromise,
+			effects,
+			dependencies
+		);
 
-		this.treeState[key] = picoValue;
+		this.treeState[key] = picoValue as PicoValue<unknown>;
 
 		if (isPromise(valueOrPromise)) {
 			valueOrPromise.then(() => {
@@ -53,12 +84,13 @@ export class PicoStore {
 
 		picoValue.subscribe(this.valueSubscriber);
 
-		return picoValue as PicoValue<TState>;
+		return picoValue;
 	};
 
 	deletePicoValue = (key: string) => {
 		this.treeState[key]?.unsubscribe(this.valueSubscriber);
 		this.onAtomDeleting(key);
+		this.treeState[key]?.internalDelete();
 		this.treeState[key] = undefined;
 	};
 

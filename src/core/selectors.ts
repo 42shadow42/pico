@@ -2,40 +2,18 @@ import {
 	InternalReadOnlyPicoHandler,
 	InternalReadWritePicoHandler
 } from './handler';
+import { PicoGetterProps, PicoWriterProps } from './shared';
 import { PicoStore } from './store';
 import { PicoValue, PicoValueSubscriber } from './value';
 
-export type SetPicoState = <TState>(
-	handler: InternalReadWritePicoHandler<TState>,
-	value: TState
-) => void;
-export type ResetPicoState = <TState>(
-	handler: InternalReadWritePicoHandler<TState>
-) => void;
-export type GetPicoState = <TState>(
-	handler: InternalReadOnlyPicoHandler<TState>
-) => TState | undefined;
-export type GetAsyncPicoState = <TState>(
-	handler: InternalReadOnlyPicoHandler<TState>
-) => Promise<TState | undefined>;
-
-export interface SelectorGetterProps {
-	get: GetPicoState;
-	getAsync: GetAsyncPicoState;
-}
-export type SelectorWriterProps = SelectorGetterProps & {
-	set: SetPicoState;
-	reset: ResetPicoState;
-};
-
 export type SelectorSource<TState> = (
-	props: SelectorGetterProps
+	props: PicoGetterProps
 ) => TState | Promise<TState>;
 export type SelectorWriter<TState> = (
-	props: SelectorWriterProps,
+	props: PicoWriterProps,
 	value: TState
 ) => void;
-export type SelectorReset = (props: SelectorWriterProps) => void;
+export type SelectorReset = (props: PicoWriterProps) => void;
 
 export interface ReadOnlySelectorConfig<TState> {
 	key: string;

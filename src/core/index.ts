@@ -8,8 +8,10 @@ export type {
 	SetPicoState,
 	ResetPicoState,
 	GetPicoState,
-	SelectorGetterProps,
-	SelectorWriterProps,
+	PicoGetterProps,
+	PicoWriterProps
+} from './shared';
+export type {
 	SelectorSource,
 	SelectorWriter,
 	ReadOnlySelectorConfig,
@@ -22,6 +24,7 @@ export type { PicoSetter, PicoState } from './hooks';
 export {
 	usePicoState,
 	usePicoValue,
-	useRawRecoilValue,
-	useSetPicoValue
+	useRawPicoValue,
+	useSetPicoValue,
+	usePicoCallback
 } from './hooks';

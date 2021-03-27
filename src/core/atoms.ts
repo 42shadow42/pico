@@ -3,7 +3,7 @@ import {
 	InternalReadWritePicoHandler,
 	isInternalReadOnlyPicoHandler
 } from './handler';
-import { InternalTreeState, PicoStore } from './store';
+import { PicoStore } from './store';
 import { PicoValue } from './value';
 
 export interface AtomConfig<TState> {

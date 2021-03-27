@@ -4,10 +4,12 @@ import {
 	InternalReadOnlyPicoHandler
 } from './handler';
 import { InternalPicoContext } from './provider';
+import { PicoWriterProps } from './shared';
 import { PicoValue, PicoValueSubscriber, PromiseStatus } from './value';
 
 export type PicoSetter<TState> = (value: TState) => void;
 export type PicoState<TState> = [TState, PicoSetter<TState>];
+export type PicoCallback<T extends Function> = (props: PicoWriterProps) => T;
 
 export const usePicoValue = function <TState>(
 	handler: InternalReadOnlyPicoHandler<TState>
@@ -63,10 +65,30 @@ export const usePicoState = function <TState>(
 	return [usePicoValue(handler), useSetPicoValue(handler)];
 };
 
-export const useRawRecoilValue = function <TState>(
+export const useRawPicoValue = function <TState>(
 	handler: InternalReadOnlyPicoHandler<TState>
 ): PicoValue<TState> {
 	const store = useContext(InternalPicoContext);
 
 	return handler.read(store);
+};
+
+export const usePicoCallback = function <TFunction extends Function>(
+	callback: PicoCallback<TFunction>
+): TFunction {
+	const store = useContext(InternalPicoContext);
+	const props: PicoWriterProps = {
+		get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
+			handler.read(store).value,
+		getAsync: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
+			handler.read(store).promise ||
+			Promise.resolve(handler.read(store).value),
+		set: <TState>(
+			handler: InternalReadWritePicoHandler<TState>,
+			value: TState
+		) => handler.save(store, value),
+		reset: <TState>(handler: InternalReadWritePicoHandler<TState>) =>
+			handler.reset(store)
+	};
+	return callback(props);
 };

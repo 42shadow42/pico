@@ -36,10 +36,8 @@ export class PicoValue<TState> {
 	}
 
 	private updatePromise = (promise: Promise<TState>) => {
-		this.onValueUpdating();
 		const status: PromiseStatus = 'pending';
 		this.promise = Object.assign(promise, { status });
-		this.onValueUpdated();
 
 		promise.then((value: TState) => {
 			// Ignore results that aren't currently pending.

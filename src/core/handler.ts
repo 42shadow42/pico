@@ -1,3 +1,4 @@
+import { ValueUpdater } from './shared';
 import { PicoStore } from './store';
 import { PicoValue } from './value';
 
@@ -8,7 +9,7 @@ export interface InternalReadOnlyPicoHandler<TState> {
 export type InternalReadWritePicoHandler<
 	TState
 > = InternalReadOnlyPicoHandler<TState> & {
-	save: (store: PicoStore, value: TState) => void;
+	save: (store: PicoStore, value: ValueUpdater<TState>) => void;
 	reset: (store: PicoStore) => void;
 };
 

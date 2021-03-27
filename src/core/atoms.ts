@@ -1,25 +1,28 @@
 import {
-	InternalReadOnlyPicoHandler,
 	InternalReadWritePicoHandler,
 	isInternalReadOnlyPicoHandler
 } from './handler';
 import { PicoStore } from './store';
 import { PicoValue } from './value';
+import { isFunction } from 'lodash';
+import { DefaultValue, ValueUpdater } from './shared';
 
 export interface AtomConfig<TState> {
 	key: string;
-	default: TState | InternalReadOnlyPicoHandler<TState>;
+	default: DefaultValue<TState>;
 }
 
 function resetState<TState>(
 	store: PicoStore,
 	key: string,
-	defaultValue: TState | InternalReadOnlyPicoHandler<TState>
+	defaultValue: DefaultValue<TState>
 ) {
 	let value: TState | Promise<TState> | undefined;
 	if (isInternalReadOnlyPicoHandler<TState>(defaultValue)) {
 		const picoValue = defaultValue.read(store);
 		value = picoValue.promise || picoValue.value;
+	} else if (isFunction(defaultValue)) {
+		value = defaultValue();
 	} else {
 		value = defaultValue;
 	}
@@ -32,7 +35,8 @@ function resetState<TState>(
 function saveState<TState>(
 	store: PicoStore,
 	key: string,
-	value: TState | InternalReadOnlyPicoHandler<TState>
+	value: ValueUpdater<TState>,
+	defaultValue: DefaultValue<TState>
 ) {
 	let newValue: TState | Promise<TState> | undefined;
 	let dependencies = new Set<PicoValue<unknown>>();
@@ -40,6 +44,10 @@ function saveState<TState>(
 		const dependency = value.read(store);
 		newValue = dependency.promise || dependency.value;
 		dependencies.add(dependency as PicoValue<unknown>);
+	} else if (isFunction(value)) {
+		newValue = value(
+			readState<TState>(store, key, defaultValue).value as TState
+		);
 	} else {
 		newValue = value;
 	}
@@ -55,12 +63,14 @@ function saveState<TState>(
 function readState<TState>(
 	store: PicoStore,
 	key: string,
-	defaultValue: TState | InternalReadOnlyPicoHandler<TState>
+	defaultValue: DefaultValue<TState>
 ) {
 	let value: TState | Promise<TState> | undefined;
 	if (isInternalReadOnlyPicoHandler<TState>(defaultValue)) {
 		const picoValue = defaultValue.read(store);
 		value = picoValue.promise || picoValue.value;
+	} else if (isFunction(defaultValue)) {
+		value = defaultValue();
 	} else {
 		value = defaultValue;
 	}
@@ -80,7 +90,8 @@ export function atom<TState>({
 	return {
 		read: (store: PicoStore): PicoValue<TState> =>
 			readState<TState>(store, key, defaultValue),
-		save: (store: PicoStore, value: TState) => saveState(store, key, value),
+		save: (store: PicoStore, value: ValueUpdater<TState>) =>
+			saveState(store, key, value, defaultValue),
 		reset: (store: PicoStore) => resetState(store, key, defaultValue)
 	};
 }

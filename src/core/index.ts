@@ -5,6 +5,8 @@ export { RecoilProvider } from './provider';
 export type { PromiseStatus, PicoValueSubscriber } from './value';
 export { PicoValue } from './value';
 export type {
+	DefaultValue,
+	ValueUpdater,
 	SetPicoState,
 	ResetPicoState,
 	GetPicoState,

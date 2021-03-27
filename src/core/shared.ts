@@ -3,19 +3,30 @@ import {
 	InternalReadWritePicoHandler
 } from './handler';
 
+export type DefaultValue<TState> =
+	| TState
+	| (() => TState | Promise<TState>)
+	| Promise<TState>
+	| InternalReadOnlyPicoHandler<TState>;
+export type ValueUpdater<TState> =
+	| TState
+	| ((current: TState) => TState | Promise<TState>)
+	| Promise<TState>
+	| InternalReadOnlyPicoHandler<TState>;
+
 export type SetPicoState = <TState>(
 	handler: InternalReadWritePicoHandler<TState>,
-	value: TState
+	value: ValueUpdater<TState>
 ) => void;
 export type ResetPicoState = <TState>(
 	handler: InternalReadWritePicoHandler<TState>
 ) => void;
 export type GetPicoState = <TState>(
 	handler: InternalReadOnlyPicoHandler<TState>
-) => TState | undefined;
+) => TState;
 export type GetAsyncPicoState = <TState>(
 	handler: InternalReadOnlyPicoHandler<TState>
-) => Promise<TState | undefined>;
+) => Promise<TState>;
 
 export interface PicoGetterProps {
 	get: GetPicoState;

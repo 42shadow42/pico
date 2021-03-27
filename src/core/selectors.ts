@@ -2,7 +2,7 @@ import {
 	InternalReadOnlyPicoHandler,
 	InternalReadWritePicoHandler
 } from './handler';
-import { PicoGetterProps, PicoWriterProps } from './shared';
+import { PicoGetterProps, PicoWriterProps, ValueUpdater } from './shared';
 import { PicoStore } from './store';
 import { PicoValue, PicoValueSubscriber } from './value';
 
@@ -11,7 +11,7 @@ export type SelectorSource<TState> = (
 ) => TState | Promise<TState>;
 export type SelectorWriter<TState> = (
 	props: PicoWriterProps,
-	value: TState
+	value: ValueUpdater<TState>
 ) => void;
 export type SelectorReset = (props: PicoWriterProps) => void;
 
@@ -49,16 +49,19 @@ const createReader = <TState>(key: string, get: SelectorSource<TState>) => (
 		const dependencies = new Set<PicoValue<unknown>>();
 
 		const value = get({
-			get: (handler) => {
+			get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) => {
 				const recoilValue = handler.read(store);
 				dependencies.add(recoilValue as PicoValue<unknown>);
-				return recoilValue.value;
+				return recoilValue.value as TState;
 			},
-			getAsync: (handler) => {
+			getAsync: <TState>(
+				handler: InternalReadOnlyPicoHandler<TState>
+			) => {
 				const recoilValue = handler.read(store);
 				dependencies.add(recoilValue as PicoValue<unknown>);
 				return (
-					recoilValue.promise || Promise.resolve(recoilValue.value)
+					recoilValue.promise ||
+					Promise.resolve(recoilValue.value as TState)
 				);
 			}
 		});
@@ -93,14 +96,15 @@ const createReader = <TState>(key: string, get: SelectorSource<TState>) => (
 
 const createWriter = <TState>(set: SelectorWriter<TState>) => (
 	store: PicoStore,
-	value: TState
+	value: ValueUpdater<TState>
 ) => {
 	set(
 		{
-			get: (handler) => handler.read(store).value,
-			getAsync: (handler) =>
+			get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
+				handler.read(store).value as TState,
+			getAsync: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
 				handler.read(store).promise ||
-				Promise.resolve(handler.read(store).value),
+				Promise.resolve(handler.read(store).value as TState),
 			set: (handler, value) => handler.save(store, value),
 			reset: (handler) => handler.reset(store)
 		},
@@ -110,10 +114,11 @@ const createWriter = <TState>(set: SelectorWriter<TState>) => (
 
 const createReset = (reset: SelectorReset) => (store: PicoStore) => {
 	reset({
-		get: (handler) => handler.read(store).value,
-		getAsync: (handler) =>
+		get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
+			handler.read(store).value as TState,
+		getAsync: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
 			handler.read(store).promise ||
-			Promise.resolve(handler.read(store).value),
+			Promise.resolve(handler.read(store).value as TState),
 		set: (handler, value) => handler.save(store, value),
 		reset: (handler) => handler.reset(store)
 	});

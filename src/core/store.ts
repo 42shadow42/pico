@@ -81,8 +81,6 @@ export class PicoStore {
 	};
 
 	unsubscribe = (subscriber: PicoStoreSubscriber) => {
-		console.log(this.subscribers.size);
 		this.subscribers.delete(subscriber);
-		console.log(this.subscribers.size);
 	};
 }

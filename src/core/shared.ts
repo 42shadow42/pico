@@ -24,7 +24,7 @@ export type ResetPicoState = <TState>(
 ) => void;
 export type GetPicoState = <TState>(
 	handler: InternalReadOnlyPicoHandler<TState>
-) => TState;
+) => TState | undefined;
 export type GetAsyncPicoState = <TState>(
 	handler: InternalReadOnlyPicoHandler<TState>
 ) => Promise<TState>;

@@ -1,4 +1,5 @@
 import isPromise from 'is-promise';
+import { SelectorLoader } from './selectors';
 import {
 	PicoValue,
 	PicoEffect,
@@ -47,7 +48,8 @@ export class PicoStore {
 		type: PicoValueType,
 		valueOrPromise: TState | Promise<TState>,
 		effects: PicoEffect<TState>[],
-		dependencies?: Set<PicoValue<unknown>>
+		dependencies?: Set<PicoValue<unknown>>,
+		loader?: SelectorLoader<TState>
 	): PicoValue<TState> => {
 		const picoValue = new PicoValue<TState>(
 			key,
@@ -55,7 +57,8 @@ export class PicoStore {
 			this,
 			valueOrPromise,
 			effects,
-			dependencies
+			dependencies,
+			loader
 		);
 
 		this.treeState[key] = picoValue as PicoValue<unknown>;

@@ -4,7 +4,7 @@ import {
 } from './handler';
 import { PicoGetterProps, PicoWriterProps, ValueUpdater } from './shared';
 import { PicoStore } from './store';
-import { PicoValue, PicoValueSubscriber } from './value';
+import { PicoValue } from './value';
 
 export type SelectorSource<TState> = (
 	props: PicoGetterProps
@@ -38,6 +38,12 @@ export type ReadWriteSelectorFamilyConfig<
 	reset: (key: TKey) => SelectorReset;
 };
 
+interface SelectorLoaderResult<TState> {
+	value: TState | Promise<TState>;
+	dependencies: Set<PicoValue<unknown>>;
+}
+export type SelectorLoader<TState> = () => SelectorLoaderResult<TState>;
+
 const createReader = <TState>(key: string, get: SelectorSource<TState>) => (
 	store: PicoStore
 ): PicoValue<TState> => {
@@ -45,29 +51,38 @@ const createReader = <TState>(key: string, get: SelectorSource<TState>) => (
 		return store.treeState[key] as PicoValue<TState>;
 	}
 
-	const loader = () => {
+	const loader: SelectorLoader<TState> = () => {
 		const dependencies = new Set<PicoValue<unknown>>();
+		const getValue = <TState>(
+			handler: InternalReadOnlyPicoHandler<TState>
+		) => {
+			const recoilValue = handler.read(store);
+			dependencies.add(recoilValue as PicoValue<unknown>);
+			return recoilValue.value;
+		};
+		const getValueAsync = <TState>(
+			handler: InternalReadOnlyPicoHandler<TState>
+		) => {
+			const recoilValue = handler.read(store);
+			dependencies.add(recoilValue as PicoValue<unknown>);
+			return (
+				recoilValue.promise ||
+				Promise.resolve(recoilValue.value as TState)
+			);
+		};
 
 		const value = get({
-			get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) => {
-				const recoilValue = handler.read(store);
-				dependencies.add(recoilValue as PicoValue<unknown>);
-				return recoilValue.value as TState;
-			},
-			getAsync: <TState>(
-				handler: InternalReadOnlyPicoHandler<TState>
-			) => {
-				const recoilValue = handler.read(store);
-				dependencies.add(recoilValue as PicoValue<unknown>);
-				return (
-					recoilValue.promise ||
-					Promise.resolve(recoilValue.value as TState)
-				);
-			}
+			get: getValue,
+			getAsync: getValueAsync
+		});
+
+		const promises: Promise<unknown>[] = [];
+		dependencies.forEach((picoValue) => {
+			picoValue.promise && promises.push(picoValue.promise);
 		});
 
 		return {
-			value,
+			value: value || Promise.all(promises).then(() => loader().value),
 			dependencies
 		};
 	};
@@ -78,22 +93,9 @@ const createReader = <TState>(key: string, get: SelectorSource<TState>) => (
 		'selector',
 		value,
 		[],
-		dependencies
+		dependencies,
+		loader
 	);
-	const watcher: PicoValueSubscriber<any> = {
-		onUpdated: () => {
-			picoValue
-				.getDependencies()
-				.forEach((dependency) => dependency.unsubscribe(watcher));
-			const { value, dependencies } = loader();
-			picoValue.updateValue(value, dependencies);
-			dependencies.forEach((dependency) => dependency.subscribe(watcher));
-		}
-	};
-
-	dependencies.forEach((dependency) => {
-		dependency.subscribe(watcher);
-	});
 
 	store.treeState[key] = picoValue as PicoValue<unknown>;
 

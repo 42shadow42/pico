@@ -1,5 +1,6 @@
 import isPromise from 'is-promise';
 import { InternalReadOnlyPicoHandler } from './handler';
+import { SelectorLoader } from './selectors';
 import { PicoWriterProps } from './shared';
 import { PicoStore } from './store';
 
@@ -30,11 +31,13 @@ export interface PicoEffect<TState> {
 	onDeleting?: PicoEffectHandler<TState>;
 }
 
+export type PicoPromise<TState> = Promise<TState> & { status: PromiseStatus };
+
 export class PicoValue<TState> {
 	key: string;
 	type: PicoValueType;
 	value: TState | undefined;
-	promise: (Promise<TState> & { status: PromiseStatus }) | undefined;
+	promise: PicoPromise<TState> | undefined;
 	error: unknown;
 
 	private store: PicoStore;
@@ -48,7 +51,8 @@ export class PicoValue<TState> {
 		store: PicoStore,
 		promiseOrValue: TState | Promise<TState>,
 		effects: PicoEffect<TState>[],
-		dependencies = new Set<PicoValue<unknown>>()
+		dependencies = new Set<PicoValue<unknown>>(),
+		loader?: SelectorLoader<TState>
 	) {
 		this.key = key;
 		this.type = type;
@@ -56,7 +60,7 @@ export class PicoValue<TState> {
 		this.effects = effects;
 		this.dependencies = dependencies;
 
-		this.updateValue(promiseOrValue);
+		this.update(promiseOrValue, dependencies, loader);
 
 		this.effects.forEach(
 			(effect) =>
@@ -76,11 +80,12 @@ export class PicoValue<TState> {
 		return new Set<PicoValue<unknown>>(this.dependencies);
 	};
 
-	updateValue = (
+	update = (
 		promiseOrValue: TState | Promise<TState>,
-		dependencies = new Set<PicoValue<unknown>>()
+		dependencies = new Set<PicoValue<unknown>>(),
+		loader?: SelectorLoader<TState>
 	) => {
-		this.dependencies = dependencies;
+		this.updateDependencies(dependencies, loader);
 
 		if (isPromise(promiseOrValue)) {
 			this.updatePromise(promiseOrValue);
@@ -155,6 +160,41 @@ export class PicoValue<TState> {
 			set: (handler, value) => handler.save(this.store, value),
 			reset: (handler) => handler.reset(this.store)
 		};
+	};
+
+	private updateDependencies = (
+		dependencies: Set<PicoValue<unknown>>,
+		loader?: SelectorLoader<TState>
+	) => {
+		const watcher: PicoValueSubscriber<any> = {
+			onUpdated: async (picoValue: PicoValue<TState>) => {
+				this.getDependencies().forEach((dependency) =>
+					dependency.unsubscribe(watcher)
+				);
+				const { value, dependencies } = loader
+					? loader()
+					: {
+							value: picoValue.value || picoValue.promise,
+							dependencies: new Set<PicoValue<unknown>>([
+								picoValue as PicoValue<unknown>
+							])
+					  };
+				this.update(
+					value as TState | Promise<TState>,
+					dependencies,
+					loader
+				);
+				dependencies.forEach((dependency) =>
+					dependency.subscribe(watcher)
+				);
+			}
+		};
+
+		dependencies.forEach((dependency) => {
+			dependency.subscribe(watcher);
+		});
+
+		this.dependencies = dependencies;
 	};
 
 	private updatePromise = (promise: Promise<TState>) => {

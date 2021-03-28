@@ -1,12 +1,11 @@
-import { createPromise } from '../test-utils/promise';
 import { atom } from '../src/core/atoms';
+import { selector } from '../src/core/selectors';
 import { PicoStore } from '../src/core/store';
+import { createPromise } from '../test-utils/promise';
 
-process.on('unhandledRejection', console.warn);
-
-describe('atom', () => {
+describe('selector', () => {
 	describe('read', () => {
-		it('should apply basic defaults', () => {
+		it('should apply basic selector handler defaults', () => {
 			let store = new PicoStore();
 			const key = 'outer-handler';
 			const defaultValue = 'basic-default';
@@ -14,7 +13,17 @@ describe('atom', () => {
 
 			let handler = atom({
 				key,
-				default: defaultValue
+				default: selector({
+					key: 'middle-handler',
+					get: ({ get }) => {
+						return get(
+							atom({
+								key: 'inner-handler',
+								default: defaultValue
+							})
+						);
+					}
+				})
 			});
 
 			const actual = handler.read(store);
@@ -23,7 +32,7 @@ describe('atom', () => {
 			expect(store.treeState[key]).toBe(actual);
 		});
 
-		it('should apply function defaults', () => {
+		it('should apply selector function handler defaults', () => {
 			let store = new PicoStore();
 			const key = 'outer-handler';
 			const defaultValue = 'basic-default';
@@ -31,7 +40,17 @@ describe('atom', () => {
 
 			let handler = atom({
 				key,
-				default: () => defaultValue
+				default: selector({
+					key: 'middle-handler',
+					get: ({ get }) => {
+						return get(
+							atom({
+								key: 'inner-handler',
+								default: () => defaultValue
+							})
+						);
+					}
+				})
 			});
 
 			const actual = handler.read(store);
@@ -40,7 +59,7 @@ describe('atom', () => {
 			expect(store.treeState[key]).toBe(actual);
 		});
 
-		it('should apply promise defaults', async () => {
+		it('should apply selector promise handler defaults', async () => {
 			let store = new PicoStore();
 			let promiseHandler = createPromise<string, void>();
 
@@ -50,7 +69,17 @@ describe('atom', () => {
 
 			let handler = atom({
 				key,
-				default: promiseHandler.promise
+				default: selector({
+					key: 'middle-handler',
+					get: ({ get }) => {
+						return get(
+							atom({
+								key: 'inner-handler',
+								default: promiseHandler.promise
+							})
+						);
+					}
+				})
 			});
 
 			const actual = handler.read(store);
@@ -63,11 +92,11 @@ describe('atom', () => {
 			promiseHandler.resolver(defaultValue);
 			await actual.promise;
 
-			expect(actual.value).toBe(expected);
 			expect(actual.promise?.status).toBe('resolved');
+			expect(actual.value).toBe(expected);
 		});
 
-		it('should apply promise errors', async () => {
+		it('should apply selector promise handler errors', async () => {
 			let store = new PicoStore();
 			let promiseHandler = createPromise<void, string>();
 
@@ -77,14 +106,23 @@ describe('atom', () => {
 
 			let handler = atom({
 				key,
-				default: promiseHandler.promise
+				default: selector({
+					key: 'middle-handler',
+					get: ({ get }) => {
+						return get(
+							atom({
+								key: 'inner-handler',
+								default: promiseHandler.promise
+							})
+						);
+					}
+				})
 			});
 
 			const actual = handler.read(store);
 
 			expect(actual.value).toBeUndefined();
 			expect(actual.promise).toStrictEqual(promiseHandler.promise);
-			expect(actual.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actual);
 
 			promiseHandler.rejecter(error);
@@ -92,8 +130,10 @@ describe('atom', () => {
 				await actual.promise;
 			} catch {}
 
+			await Promise.resolve();
+			await Promise.resolve();
+
 			expect(actual.value).toBeUndefined();
-			expect(actual.promise?.status).toBe('rejected');
 			expect(actual.error).toBe(expected);
 		});
 	});

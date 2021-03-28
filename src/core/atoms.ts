@@ -22,7 +22,10 @@ function resolveDefaultValue<TState>(
 	if (isInternalReadOnlyPicoHandler<TState>(defaultValue)) {
 		const picoValue = defaultValue.read(store);
 		dependencies.add(picoValue as PicoValue<unknown>);
-		value = picoValue.promise || picoValue.value;
+		value =
+			picoValue.promise?.status === 'pending'
+				? picoValue.promise
+				: picoValue.value;
 	} else if (isFunction(defaultValue)) {
 		value = defaultValue();
 	} else {
@@ -43,12 +46,14 @@ function resolveValueUpdater<TState>(
 	let dependencies = new Set<PicoValue<unknown>>();
 	if (isInternalReadOnlyPicoHandler<TState>(value)) {
 		const dependency = value.read(store);
-		newValue = dependency.promise || dependency.value;
+		newValue =
+			dependency.promise?.status === 'pending'
+				? dependency.promise
+				: dependency.value;
 		dependencies.add(dependency as PicoValue<unknown>);
 	} else if (isFunction(value)) {
-		newValue = value(
-			readState<TState>(store, key, defaultValue, effects).value as TState
-		);
+		const picoValue = readState<TState>(store, key, defaultValue, effects);
+		newValue = value(picoValue.value as TState);
 	} else {
 		newValue = value;
 	}
@@ -65,7 +70,7 @@ function resetState<TState>(
 	const { value, dependencies } = resolveDefaultValue(store, defaultValue);
 	const picoValue = store.treeState[key] as PicoValue<TState> | undefined;
 	if (picoValue) {
-		picoValue.updateValue(value as TState | Promise<TState>);
+		picoValue.update(value as TState | Promise<TState>, dependencies);
 	} else {
 		store.createPicoValue(
 			key,
@@ -93,10 +98,7 @@ function saveState<TState>(
 	);
 	const picoValue = store.treeState[key] as PicoValue<TState> | undefined;
 	if (picoValue) {
-		picoValue.updateValue(
-			newValue as TState | Promise<TState>,
-			dependencies
-		);
+		picoValue.update(newValue as TState | Promise<TState>, dependencies);
 	} else {
 		store.createPicoValue(
 			key,

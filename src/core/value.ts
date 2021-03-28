@@ -56,12 +56,7 @@ export class PicoValue<TState> {
 		this.effects = effects;
 		this.dependencies = dependencies;
 
-		if (isPromise(promiseOrValue)) {
-			this.updatePromise(promiseOrValue);
-			return;
-		}
-
-		this.value = promiseOrValue;
+		this.updateValue(promiseOrValue);
 
 		this.effects.forEach(
 			(effect) =>
@@ -163,19 +158,23 @@ export class PicoValue<TState> {
 	};
 
 	private updatePromise = (promise: Promise<TState>) => {
+		this.onValueUpdating();
 		const status: PromiseStatus = 'pending';
 		this.promise = Object.assign(promise, { status });
+		this.onValueUpdating();
 
-		promise.then((value: TState) => {
-			// Ignore results that aren't currently pending.
-			if (this.promise !== promise) {
-				return;
-			}
-			this.onValueUpdating();
-			this.promise.status = 'resolved';
-			this.value = value;
-			this.onValueUpdated();
-		});
+		promise
+			.then((value: TState) => {
+				// Ignore results that aren't currently pending.
+				if (this.promise !== promise) {
+					return;
+				}
+				this.onValueUpdating();
+				this.promise.status = 'resolved';
+				this.value = value;
+				this.onValueUpdated();
+			})
+			.catch(() => {});
 
 		promise.catch((error: unknown) => {
 			// Ignore results that aren't currently pending.

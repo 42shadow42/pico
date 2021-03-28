@@ -3,3 +3,4 @@ lib
 .eslintcache
 storybook-static
 pico-*.tgz
+coverage

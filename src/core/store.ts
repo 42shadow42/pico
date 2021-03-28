@@ -61,9 +61,11 @@ export class PicoStore {
 		this.treeState[key] = picoValue as PicoValue<unknown>;
 
 		if (isPromise(valueOrPromise)) {
-			valueOrPromise.then(() => {
-				this.onValueCreated(picoValue as PicoValue<unknown>);
-			});
+			valueOrPromise
+				.then(() => {
+					this.onValueCreated(picoValue as PicoValue<unknown>);
+				})
+				.catch(() => {});
 		} else {
 			this.onValueCreated(picoValue as PicoValue<unknown>);
 		}

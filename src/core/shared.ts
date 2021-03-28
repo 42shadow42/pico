@@ -37,26 +37,3 @@ export type PicoWriterProps = PicoGetterProps & {
 	set: SetPicoState;
 	reset: ResetPicoState;
 };
-
-export type PicoStoreEffect<TState> = {
-	onCreated?: (
-		props: PicoWriterProps,
-		value: PicoValue<TState>,
-		key: string
-	) => void;
-	onDeleting?: (
-		props: PicoWriterProps,
-		value: PicoValue<TState>,
-		key: string
-	) => void;
-	onUpdating?: (
-		props: PicoWriterProps,
-		value: PicoValue<TState>,
-		key: string
-	) => void;
-	onUpdated?: (
-		props: PicoWriterProps,
-		value: PicoValue<TState>,
-		key: string
-	) => void;
-};

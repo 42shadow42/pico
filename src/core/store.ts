@@ -1,16 +1,19 @@
 import isPromise from 'is-promise';
-import { InternalReadOnlyPicoHandler } from './handler';
-import { PicoStoreEffect, PicoWriterProps } from './shared';
-import { PicoValue, PicoValueEffect, PicoValueSubscriber } from './value';
+import {
+	PicoValue,
+	PicoEffect,
+	PicoValueSubscriber,
+	PicoValueType
+} from './value';
 
 export interface InternalTreeState {
 	[key: string]: PicoValue<unknown> | undefined;
 }
 
-type AtomCreatedHandler = (key: string) => void;
-type AtomDeletingHandler = (key: string) => void;
-type AtomUpdatingHandler = (key: string) => void;
-type AtomUpdatedHandler = (key: string) => void;
+type AtomCreatedHandler = (value: PicoValue<unknown>) => void;
+type AtomDeletingHandler = (value: PicoValue<unknown>) => void;
+type AtomUpdatingHandler = (value: PicoValue<unknown>) => void;
+type AtomUpdatedHandler = (value: PicoValue<unknown>) => void;
 
 export interface PicoStoreSubscriber {
 	onAtomCreated?: AtomCreatedHandler;
@@ -23,50 +26,33 @@ export class PicoStore {
 	treeState: InternalTreeState = {};
 	private subscribers = new Set<PicoStoreSubscriber>();
 	private valueSubscriber: PicoValueSubscriber<any> = {
-		onUpdating: (value, key: string) => {
+		onUpdating: (picoValue) => {
 			new Set(this.subscribers).forEach(
 				(subscriber) =>
-					subscriber.onAtomUpdating && subscriber.onAtomUpdating(key)
+					subscriber.onAtomUpdating &&
+					subscriber.onAtomUpdating(picoValue)
 			);
 		},
-		onUpdated: (value, key: string) => {
+		onUpdated: (picoValue) => {
 			new Set(this.subscribers).forEach(
 				(subscriber) =>
-					subscriber.onAtomUpdated && subscriber.onAtomUpdated(key)
+					subscriber.onAtomUpdated &&
+					subscriber.onAtomUpdated(picoValue)
 			);
 		}
 	};
 
-	createPicoValueEffects = <TState>(
-		storeEffects: PicoStoreEffect<TState>[]
-	) => {
-		const picoWriterProps: PicoWriterProps = {
-			get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
-				handler.read(this).value as TState,
-			getAsync: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
-				handler.read(this).promise ||
-				Promise.resolve(handler.read(this).value as TState),
-			set: (handler, value) => handler.save(this, value),
-			reset: (handler) => handler.reset(this)
-		};
-		return storeEffects.map((effect) => {
-			return {
-				onCreated: effect.onCreated?.bind(null, picoWriterProps),
-				onUpdating: effect.onUpdating?.bind(null, picoWriterProps),
-				onUpdated: effect.onUpdated?.bind(null, picoWriterProps),
-				onDeleting: effect.onDeleting?.bind(null, picoWriterProps)
-			};
-		});
-	};
-
 	createPicoValue = <TState>(
 		key: string,
+		type: PicoValueType,
 		valueOrPromise: TState | Promise<TState>,
-		effects: PicoValueEffect<TState>[],
+		effects: PicoEffect<TState>[],
 		dependencies?: Set<PicoValue<unknown>>
 	): PicoValue<TState> => {
 		const picoValue = new PicoValue<TState>(
 			key,
+			type,
+			this,
 			valueOrPromise,
 			effects,
 			dependencies
@@ -76,10 +62,10 @@ export class PicoStore {
 
 		if (isPromise(valueOrPromise)) {
 			valueOrPromise.then(() => {
-				this.onAtomCreated(key);
+				this.onValueCreated(picoValue as PicoValue<unknown>);
 			});
 		} else {
-			this.onAtomCreated(key);
+			this.onValueCreated(picoValue as PicoValue<unknown>);
 		}
 
 		picoValue.subscribe(this.valueSubscriber);
@@ -88,23 +74,28 @@ export class PicoStore {
 	};
 
 	deletePicoValue = (key: string) => {
-		this.treeState[key]?.unsubscribe(this.valueSubscriber);
-		this.onAtomDeleting(key);
-		this.treeState[key]?.internalDelete();
+		const value = this.treeState[key];
+		if (value) {
+			value.unsubscribe(this.valueSubscriber);
+			value && this.onAtomDeleting(value);
+			value.onDeleting();
+		}
 		this.treeState[key] = undefined;
 	};
 
-	onAtomCreated = (key: string) => {
-		new Set<PicoStoreSubscriber>(this.subscribers).forEach(
-			(subscriber) =>
-				subscriber.onAtomCreated && subscriber.onAtomCreated(key)
-		);
+	onValueCreated = (value: PicoValue<unknown>) => {
+		if (value.type === 'atom') {
+			new Set<PicoStoreSubscriber>(this.subscribers).forEach(
+				(subscriber) =>
+					subscriber.onAtomCreated && subscriber.onAtomCreated(value)
+			);
+		}
 	};
 
-	onAtomDeleting = (key: string) => {
+	onAtomDeleting = (value: PicoValue<unknown>) => {
 		new Set<PicoStoreSubscriber>(this.subscribers).forEach(
 			(subscriber) =>
-				subscriber?.onAtomDeleting && subscriber.onAtomDeleting(key)
+				subscriber?.onAtomDeleting && subscriber.onAtomDeleting(value)
 		);
 	};
 

@@ -7,7 +7,6 @@ import {
 } from 'react';
 import { InternalPicoContext } from '../core/provider';
 import { PicoStoreSubscriber } from '../core/store';
-import { PicoValue } from '../core/value';
 
 type Batch = InternalBatchComponent[];
 type InternalBatchComponent = () => void;
@@ -19,10 +18,13 @@ export class History {
 	private batch: Batch = [];
 	private batchInProgress = false;
 
-	commitHistory = (): void => {
+	commitHistory = (clearFuture = true): void => {
 		if (this.batch.length > 0) {
 			this.history.push(this.batch);
 			this.batch = [];
+			if (clearFuture) {
+				this.future = [];
+			}
 		}
 
 		this.batchInProgress = false;
@@ -57,7 +59,7 @@ export class History {
 
 	forward = (): void => {
 		this.future.pop()?.forEach((component) => component());
-		this.commitHistory();
+		this.commitHistory(false);
 	};
 }
 
@@ -75,29 +77,26 @@ export const HistoryObserver = ({ children, manual }: HistoryObserverProps) => {
 
 	useEffect(() => {
 		const monitor: PicoStoreSubscriber = {
-			onAtomCreated: (key: string): void => {
+			onAtomCreated: ({ key }): void => {
 				history?.internalAddBatchComponent(() =>
 					store.deletePicoValue(key)
 				);
 			},
-			onAtomDeleting: (key: string): void => {
-				const picoValue = store.treeState[key] as PicoValue<unknown>;
+			onAtomDeleting: (picoValue): void => {
 				history?.internalAddBatchComponent(() =>
 					store.createPicoValue(
-						key,
+						picoValue.key,
+						'atom',
 						picoValue.value,
 						picoValue.getEffects(),
 						picoValue.getDependencies()
 					)
 				);
 			},
-			onAtomUpdating: (key: string): void => {
-				const value = (store.treeState[key] as PicoValue<unknown>)
-					.value;
+			onAtomUpdating: (picoValue): void => {
+				const value = picoValue.value;
 				history?.internalAddBatchComponent(() => {
-					const picoValue = store.treeState[
-						key
-					] as PicoValue<unknown>;
+					console.log(picoValue);
 					picoValue.updateValue(value);
 				});
 			}

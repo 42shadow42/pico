@@ -2,7 +2,12 @@ export type { AtomConfig } from './atoms';
 export { atom, atomFamily } from './atoms';
 export type { RecoilProviderProps } from './provider';
 export { RecoilProvider } from './provider';
-export type { PromiseStatus, PicoValueSubscriber } from './value';
+export type {
+	PromiseStatus,
+	PicoValueSubscriber,
+	PicoEffect,
+	ValueEvent
+} from './value';
 export { PicoValue } from './value';
 export type {
 	DefaultValue,
@@ -11,8 +16,7 @@ export type {
 	ResetPicoState,
 	GetPicoState,
 	PicoGetterProps,
-	PicoWriterProps,
-	PicoStoreEffect
+	PicoWriterProps
 } from './shared';
 export type {
 	SelectorSource,

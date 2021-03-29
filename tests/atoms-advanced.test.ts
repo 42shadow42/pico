@@ -130,4 +130,192 @@ describe('atom-advanced', () => {
 			expect(store.treeState[key]).toBe(actual);
 		});
 	});
+
+	describe('write', () => {
+		it('should write unresolved handler promise values', async () => {
+			let store = new PicoStore();
+			let promiseHandler = createPromise<string, void>();
+
+			const key = 'outer-handler';
+			const defaultValue = 'basic-default';
+			const savedValue = 'basic-value';
+			const expected = savedValue;
+
+			let handler = atom({
+				key,
+				default: defaultValue
+			});
+
+			handler.save(
+				store,
+				atom({
+					key: 'unresolved-handler',
+					default: promiseHandler.promise
+				})
+			);
+			const actual = handler.read(store);
+
+			expect(actual.value).toBeUndefined();
+			expect(actual.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.promise?.status).toBe('pending');
+			expect(store.treeState[key]).toBe(actual);
+
+			promiseHandler.resolver(savedValue);
+			await actual.promise;
+
+			expect(actual.value).toBe(expected);
+			expect(actual.promise?.status).toBe('resolved');
+		});
+
+		it('should reset unresolved handler promise values', async () => {
+			let store = new PicoStore();
+			let promiseHandler = createPromise<string, void>();
+
+			const key = 'outer-handler';
+			const defaultValue = 'basic-default';
+			const savedValue = 'basic-value';
+			const expected = savedValue;
+
+			let handler = atom({
+				key,
+				default: atom({
+					key: 'unresolved-handler',
+					default: promiseHandler.promise
+				})
+			});
+
+			handler.reset(store);
+			const actual = handler.read(store);
+
+			expect(actual.value).toBeUndefined();
+			expect(actual.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.promise?.status).toBe('pending');
+			expect(store.treeState[key]).toBe(actual);
+
+			promiseHandler.resolver(savedValue);
+			await actual.promise;
+
+			expect(actual.value).toBe(expected);
+			expect(actual.promise?.status).toBe('resolved');
+		});
+	});
+
+	describe('reset', () => {
+		it('should reset unitialized basic values', () => {
+			let store = new PicoStore();
+			const key = 'outer-handler';
+			const defaultValue = 'basic-default';
+			const expected = defaultValue;
+
+			let handler = atom({
+				key,
+				default: defaultValue
+			});
+
+			handler.reset(store);
+			const actual = handler.read(store);
+
+			expect(actual.value).toBe(expected);
+			expect(store.treeState[key]).toBe(actual);
+		});
+
+		it('should reset unitialized function values', () => {
+			let store = new PicoStore();
+			const key = 'outer-handler';
+			const defaultValue = 'basic-default';
+			const expected = defaultValue;
+
+			let handler = atom({
+				key,
+				default: () => defaultValue
+			});
+
+			handler.reset(store);
+			const actual = handler.read(store);
+
+			expect(actual.value).toBe(expected);
+			expect(store.treeState[key]).toBe(actual);
+		});
+
+		it('should reset unitialized promise values', async () => {
+			let store = new PicoStore();
+			let promiseHandler = createPromise<string, void>();
+
+			const key = 'outer-handler';
+			const defaultValue = 'basic-default';
+			const expected = defaultValue;
+
+			let handler = atom({
+				key,
+				default: promiseHandler.promise
+			});
+
+			handler.reset(store);
+			const actual = handler.read(store);
+
+			expect(actual.value).toBeUndefined();
+			expect(actual.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.promise?.status).toBe('pending');
+			expect(store.treeState[key]).toBe(actual);
+
+			promiseHandler.resolver(defaultValue);
+			await actual.promise;
+
+			expect(actual.value).toBe(expected);
+			expect(actual.promise?.status).toBe('resolved');
+		});
+
+		it('should reset unitialized promise errors', async () => {
+			let store = new PicoStore();
+			let promiseHandler = createPromise<string, string>();
+
+			const key = 'outer-handler';
+			const defaultError = 'basic-error';
+			const expected = defaultError;
+
+			let handler = atom({
+				key,
+				default: promiseHandler.promise
+			});
+
+			handler.reset(store);
+			const actual = handler.read(store);
+
+			expect(actual.value).toBeUndefined();
+			expect(actual.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.promise?.status).toBe('pending');
+			expect(store.treeState[key]).toBe(actual);
+
+			promiseHandler.rejecter(defaultError);
+			try {
+				await actual.promise;
+			} catch {}
+
+			expect(actual.value).toBeUndefined();
+			expect(actual.promise?.status).toBe('rejected');
+			expect(actual.error).toBe(expected);
+		});
+
+		it('should reset unitialized handler values', () => {
+			let store = new PicoStore();
+
+			const key = 'outer-handler';
+			const defaultValue = 'basic-default';
+			const expected = defaultValue;
+
+			let handler = atom({
+				key,
+				default: atom({
+					key: 'write-handler',
+					default: defaultValue
+				})
+			});
+
+			handler.reset(store);
+			const actual = handler.read(store);
+
+			expect(actual.value).toBe(expected);
+			expect(store.treeState[key]).toBe(actual);
+		});
+	});
 });

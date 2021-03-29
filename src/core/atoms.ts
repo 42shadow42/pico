@@ -46,10 +46,11 @@ function resolveValueUpdater<TState>(
 	let dependencies = new Set<PicoValue<unknown>>();
 	if (isInternalReadOnlyPicoHandler<TState>(value)) {
 		const dependency = value.read(store);
-		newValue =
-			dependency.promise?.status === 'pending'
-				? dependency.promise
-				: dependency.value;
+		if (dependency.promise?.status === 'pending') {
+			newValue = dependency.promise;
+		} else {
+			newValue = dependency.value;
+		}
 		dependencies.add(dependency as PicoValue<unknown>);
 	} else if (isFunction(value)) {
 		const picoValue = readState<TState>(store, key, defaultValue, effects);

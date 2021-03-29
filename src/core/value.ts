@@ -200,6 +200,8 @@ export class PicoValue<TState> {
 	private updatePromise = (promise: Promise<TState>) => {
 		this.onValueUpdating();
 		const status: PromiseStatus = 'pending';
+		this.value = undefined;
+		this.error = undefined;
 		this.promise = Object.assign(promise, { status });
 		this.onValueUpdating();
 
@@ -212,6 +214,7 @@ export class PicoValue<TState> {
 				this.onValueUpdating();
 				this.promise.status = 'resolved';
 				this.value = value;
+				this.error = undefined;
 				this.onValueUpdated();
 			})
 			.catch(() => {});
@@ -222,6 +225,7 @@ export class PicoValue<TState> {
 			this.onValueUpdating();
 			this.promise.status = 'rejected';
 			this.error = error;
+			this.value = undefined;
 			this.onValueUpdated();
 		});
 	};

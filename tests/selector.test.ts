@@ -4,26 +4,37 @@ import { PicoStore } from '../src/core/store';
 import { createPromise } from '../test-utils/promise';
 
 describe('selector', () => {
+	it('should utilize existing value', () => {
+		let store = new PicoStore();
+
+		let handler = selector({
+			key: 'selector',
+			get: () => 'default'
+		});
+
+		const initial = handler.read(store);
+		const other = handler.read(store);
+
+		expect(other).toBe(initial);
+	});
+
 	describe('read', () => {
-		it('should apply basic selector handler defaults', () => {
+		it('should allow getting synchronous atoms', () => {
 			let store = new PicoStore();
-			const key = 'outer-handler';
+			const key = 'selector';
 			const defaultValue = 'basic-default';
 			const expected = defaultValue;
 
-			let handler = atom({
+			let handler = selector({
 				key,
-				default: selector({
-					key: 'middle-handler',
-					get: ({ get }) => {
-						return get(
-							atom({
-								key: 'inner-handler',
-								default: defaultValue
-							})
-						);
-					}
-				})
+				get: ({ get }) => {
+					return get(
+						atom({
+							key: 'atom',
+							default: defaultValue
+						})
+					);
+				}
 			});
 
 			const actual = handler.read(store);
@@ -32,54 +43,56 @@ describe('selector', () => {
 			expect(store.treeState[key]).toBe(actual);
 		});
 
-		it('should apply selector function handler defaults', () => {
+		it('should allow getting synchronous atoms as promises', async () => {
 			let store = new PicoStore();
-			const key = 'outer-handler';
+
+			const key = 'selector';
 			const defaultValue = 'basic-default';
 			const expected = defaultValue;
 
-			let handler = atom({
+			let handler = selector({
 				key,
-				default: selector({
-					key: 'middle-handler',
-					get: ({ get }) => {
-						return get(
-							atom({
-								key: 'inner-handler',
-								default: () => defaultValue
-							})
-						);
-					}
-				})
+				get: ({ getAsync }) => {
+					return getAsync(
+						atom({
+							key: 'atom',
+							default: defaultValue
+						})
+					);
+				}
 			});
 
 			const actual = handler.read(store);
+
+			expect(actual.value).toBeUndefined();
+			expect(actual.promise).toBeDefined();
+			expect(actual.promise?.status).toBe('pending');
+			expect(store.treeState[key]).toBe(actual);
+
+			await actual.promise;
 
 			expect(actual.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 
-		it('should apply selector promise handler defaults', async () => {
+		it('should allow getting asynchronous atoms as promises', async () => {
 			let store = new PicoStore();
 			let promiseHandler = createPromise<string, void>();
 
-			const key = 'outer-handler';
+			const key = 'selector';
 			const defaultValue = 'basic-default';
 			const expected = defaultValue;
 
-			let handler = atom({
+			let handler = selector({
 				key,
-				default: selector({
-					key: 'middle-handler',
-					get: ({ get }) => {
-						return get(
-							atom({
-								key: 'inner-handler',
-								default: promiseHandler.promise
-							})
-						);
-					}
-				})
+				get: ({ getAsync }) => {
+					return getAsync(
+						atom({
+							key: 'atom',
+							default: promiseHandler.promise
+						})
+					);
+				}
 			});
 
 			const actual = handler.read(store);
@@ -92,49 +105,123 @@ describe('selector', () => {
 			promiseHandler.resolver(defaultValue);
 			await actual.promise;
 
-			expect(actual.promise?.status).toBe('resolved');
 			expect(actual.value).toBe(expected);
+			expect(store.treeState[key]).toBe(actual);
 		});
+	});
 
-		it('should apply selector promise handler errors', async () => {
+	describe('track', () => {
+		it('should track changes to atoms', () => {
 			let store = new PicoStore();
-			let promiseHandler = createPromise<void, string>();
+			const key = 'selector';
+			const defaultValue = 'basic-default';
+			const value = 'basic-value';
+			const expected = value;
 
-			const key = 'outer-handler';
-			const error = 'basic-default';
-			const expected = error;
-
-			let handler = atom({
-				key,
-				default: selector({
-					key: 'middle-handler',
-					get: ({ get }) => {
-						return get(
-							atom({
-								key: 'inner-handler',
-								default: promiseHandler.promise
-							})
-						);
-					}
-				})
+			let atomHandler = atom({
+				key: 'atom',
+				default: defaultValue
 			});
 
-			const actual = handler.read(store);
+			let handler = selector({
+				key,
+				get: ({ get }) => get(atomHandler)
+			});
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toStrictEqual(promiseHandler.promise);
-			expect(store.treeState[key]).toBe(actual);
+			const initial = handler.read(store);
+			atomHandler.save(store, value);
 
-			promiseHandler.rejecter(error);
-			try {
-				await actual.promise;
-			} catch {}
-
-			await Promise.resolve();
-			await Promise.resolve();
-
-			expect(actual.value).toBeUndefined();
-			expect(actual.error).toBe(expected);
+			expect(initial.value).toBe(expected);
 		});
+
+		it('should track changes to selectors', () => {
+			let store = new PicoStore();
+			const key = 'selector';
+			const defaultValue = 'basic-default';
+			const value = 'basic-value';
+			const expected = value;
+
+			const atomHandler = atom({
+				key: 'atom',
+				default: defaultValue
+			});
+
+			let handler = selector({
+				key,
+				get: ({ get }) =>
+					get(
+						selector({
+							key: 'intermediate',
+							get: ({ get }) => get(atomHandler)
+						})
+					)
+			});
+
+			const initial = handler.read(store);
+			atomHandler.save(store, value);
+
+			expect(initial.value).toBe(expected);
+		});
+	});
+
+	describe('write', () => {
+		let store = new PicoStore();
+		const key = 'selector';
+		const defaultValue = 'basic-default';
+		const value = 'basic-value';
+		const expected = value;
+
+		const atomHandler = atom({
+			key: 'atom',
+			default: defaultValue
+		});
+
+		let handler = selector<string>({
+			key,
+			get: ({ get }) => get<string>(atomHandler) as string,
+			set: ({ set }, value) => set<string>(atomHandler, value),
+			reset: ({ reset }) => reset(atomHandler)
+		});
+
+		handler.save(store, value);
+		const actualSelector = handler.read(store);
+
+		expect(actualSelector.value).toBe(expected);
+		expect(store.treeState[key]).toBe(actualSelector);
+
+		const actualAtom = handler.read(store);
+
+		expect(actualAtom.value).toBe(expected);
+	});
+
+	describe('reset', () => {
+		let store = new PicoStore();
+		const key = 'selector';
+		const defaultValue = 'basic-default';
+		const value = 'basic-value';
+		const expected = defaultValue;
+
+		const atomHandler = atom({
+			key: 'atom',
+			default: defaultValue
+		});
+
+		let handler = selector<string>({
+			key,
+			get: ({ get }) => get<string>(atomHandler) as string,
+			set: ({ set }, value) => set<string>(atomHandler, value),
+			reset: ({ reset }) => reset(atomHandler)
+		});
+
+		handler.save(store, value);
+		handler.reset(store);
+		const actualSelector = handler.read(store);
+
+		expect(actualSelector.value).toBe(expected);
+		expect(store.treeState[key]).toBe(actualSelector);
+
+		const actualAtom = handler.read(store);
+
+		expect(actualAtom.value).toBe(expected);
 	});
 });

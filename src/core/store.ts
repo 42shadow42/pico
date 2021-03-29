@@ -66,11 +66,11 @@ export class PicoStore {
 		if (isPromise(valueOrPromise)) {
 			valueOrPromise
 				.then(() => {
-					this.onValueCreated(picoValue as PicoValue<unknown>);
+					this.onAtomCreated(picoValue as PicoValue<unknown>);
 				})
 				.catch(() => {});
 		} else {
-			this.onValueCreated(picoValue as PicoValue<unknown>);
+			this.onAtomCreated(picoValue as PicoValue<unknown>);
 		}
 
 		picoValue.subscribe(this.valueSubscriber);
@@ -88,7 +88,7 @@ export class PicoStore {
 		this.treeState[key] = undefined;
 	};
 
-	onValueCreated = (value: PicoValue<unknown>) => {
+	onAtomCreated = (value: PicoValue<unknown>) => {
 		if (value.type === 'atom') {
 			new Set<PicoStoreSubscriber>(this.subscribers).forEach(
 				(subscriber) =>

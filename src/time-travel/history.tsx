@@ -95,8 +95,9 @@ export const HistoryObserver = ({ children, manual }: HistoryObserverProps) => {
 			},
 			onAtomUpdating: (picoValue): void => {
 				const value = picoValue.value;
+				const dependencies = picoValue.getDependencies();
 				history?.internalAddBatchComponent(() => {
-					picoValue.update(value);
+					picoValue.update(value, dependencies);
 				});
 			}
 		};

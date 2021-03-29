@@ -48,7 +48,7 @@ export class PicoStore {
 		type: PicoValueType,
 		valueOrPromise: TState | Promise<TState>,
 		effects: PicoEffect<TState>[],
-		dependencies?: Set<PicoValue<unknown>>,
+		dependencies: Set<PicoValue<unknown>>,
 		loader?: SelectorLoader<TState>
 	): PicoValue<TState> => {
 		const picoValue = new PicoValue<TState>(
@@ -62,6 +62,8 @@ export class PicoStore {
 		);
 
 		this.treeState[key] = picoValue as PicoValue<unknown>;
+
+		picoValue.onCreated();
 
 		if (isPromise(valueOrPromise)) {
 			valueOrPromise

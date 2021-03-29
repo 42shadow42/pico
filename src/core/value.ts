@@ -51,7 +51,7 @@ export class PicoValue<TState> {
 		store: PicoStore,
 		promiseOrValue: TState | Promise<TState>,
 		effects: PicoEffect<TState>[],
-		dependencies = new Set<PicoValue<unknown>>(),
+		dependencies: Set<PicoValue<unknown>>,
 		loader?: SelectorLoader<TState>
 	) {
 		this.key = key;
@@ -60,18 +60,7 @@ export class PicoValue<TState> {
 		this.effects = effects;
 		this.dependencies = dependencies;
 
-		this.update(promiseOrValue, dependencies, loader);
-
-		this.effects.forEach(
-			(effect) =>
-				effect.onCreated &&
-				effect.onCreated(
-					Object.assign(this.getPicoWriterProps(), {
-						value: this,
-						key: this.key
-					})
-				)
-		);
+		this.update(promiseOrValue, dependencies, loader, false);
 	}
 
 	getEffects = () => [...this.effects];
@@ -82,18 +71,20 @@ export class PicoValue<TState> {
 
 	update = (
 		promiseOrValue: TState | Promise<TState>,
-		dependencies = new Set<PicoValue<unknown>>(),
-		loader?: SelectorLoader<TState>
+		dependencies: Set<PicoValue<unknown>>,
+		loader?: SelectorLoader<TState>,
+		fireEvents = true
 	) => {
 		this.updateDependencies(dependencies, loader);
 
 		if (isPromise(promiseOrValue)) {
-			this.updatePromise(promiseOrValue);
+			this.updatePromise(promiseOrValue, fireEvents);
 			return;
 		}
-		this.onValueUpdating();
+
+		fireEvents && this.onValueUpdating();
 		this.value = promiseOrValue;
-		this.onValueUpdated();
+		fireEvents && this.onValueUpdated();
 	};
 
 	subscribe = (subscriber: PicoValueSubscriber<TState>) => {
@@ -102,6 +93,20 @@ export class PicoValue<TState> {
 
 	unsubscribe = (subscriber: PicoValueSubscriber<TState>) => {
 		this.subscribers.delete(subscriber);
+	};
+
+	// public because creations are triggered by the store
+	onCreated = () => {
+		this.effects.forEach(
+			(effect) =>
+				effect.onCreated &&
+				effect.onCreated(
+					Object.assign(this.getPicoWriterProps(), {
+						value: this,
+						key: this.key
+					})
+				)
+		);
 	};
 
 	// public because deletions are triggered by the store
@@ -197,13 +202,13 @@ export class PicoValue<TState> {
 		this.dependencies = dependencies;
 	};
 
-	private updatePromise = (promise: Promise<TState>) => {
-		this.onValueUpdating();
+	private updatePromise = (promise: Promise<TState>, fireEvents: boolean) => {
+		fireEvents && this.onValueUpdating();
 		const status: PromiseStatus = 'pending';
 		this.value = undefined;
 		this.error = undefined;
 		this.promise = Object.assign(promise, { status });
-		this.onValueUpdating();
+		fireEvents && this.onValueUpdating();
 
 		promise
 			.then((value: TState) => {
@@ -221,7 +226,9 @@ export class PicoValue<TState> {
 
 		promise.catch((error: unknown) => {
 			// Ignore results that aren't currently pending.
-			if (this.promise !== promise) return;
+			if (this.promise !== promise) {
+				return;
+			}
 			this.onValueUpdating();
 			this.promise.status = 'rejected';
 			this.error = error;

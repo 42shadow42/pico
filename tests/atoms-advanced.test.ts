@@ -1,3 +1,4 @@
+import { PicoEffect } from '../src/core/value';
 import { atom } from '../src/core/atoms';
 import { PicoStore } from '../src/core/store';
 import { createPromise } from '../test-utils/promise';
@@ -316,6 +317,313 @@ describe('atom-advanced', () => {
 
 			expect(actual.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
+		});
+	});
+
+	describe('effects', () => {
+		it('should fire events', () => {
+			const store = new PicoStore();
+			const key = 'atom';
+			const defaultValue = 'basic-default';
+			const value = 'basic-value';
+
+			const effect: PicoEffect<string> = {
+				onCreated: jest.fn(),
+				onUpdating: jest.fn(),
+				onUpdated: jest.fn(),
+				onDeleting: jest.fn()
+			};
+
+			const atomHandler = atom({
+				key,
+				default: defaultValue,
+				effects: [effect]
+			});
+
+			atomHandler.read(store);
+
+			expect(effect.onCreated).toBeCalledTimes(1);
+			expect(effect.onUpdating).toBeCalledTimes(0);
+			expect(effect.onUpdated).toBeCalledTimes(0);
+			expect(effect.onDeleting).toBeCalledTimes(0);
+
+			atomHandler.save(store, value);
+
+			expect(effect.onCreated).toBeCalledTimes(1);
+			expect(effect.onUpdating).toBeCalledTimes(1);
+			expect(effect.onUpdated).toBeCalledTimes(1);
+			expect(effect.onDeleting).toBeCalledTimes(0);
+
+			store.deletePicoValue(key);
+
+			expect(effect.onCreated).toBeCalledTimes(1);
+			expect(effect.onUpdating).toBeCalledTimes(1);
+			expect(effect.onUpdated).toBeCalledTimes(1);
+			expect(effect.onDeleting).toBeCalledTimes(1);
+			expect(store.treeState[key]).toBeUndefined();
+		});
+
+		it('should allow reading synchronous values from events', () => {
+			const store = new PicoStore();
+			const key = 'atom';
+			const defaultValue = 'basic-default';
+			const value = 'basic-value';
+
+			const effect: PicoEffect<string> = {
+				onCreated: jest.fn(({ get }) => {
+					expect(get(atomHandler)).toBe(defaultValue);
+				}),
+				onUpdating: jest.fn(({ get }) => {
+					expect(get(atomHandler)).toBe(defaultValue);
+				}),
+				onUpdated: jest.fn(({ get }) => {
+					expect(get(atomHandler)).toBe(value);
+				}),
+				onDeleting: jest.fn(({ get }) => {
+					expect(get(atomHandler)).toBe(value);
+				})
+			};
+
+			const atomHandler = atom({
+				key,
+				default: defaultValue,
+				effects: [effect]
+			});
+
+			atomHandler.read(store);
+			atomHandler.save(store, value);
+			store.deletePicoValue(key);
+		});
+
+		it('should allow reading synchronous values asynchronously from events', async () => {
+			const store = new PicoStore();
+			const key = 'atom';
+			const defaultValue = 'basic-default';
+			const value = 'basic-value';
+
+			const effect: PicoEffect<string> = {
+				onCreated: jest.fn(({ getAsync }) => {
+					const promise = getAsync(atomHandler);
+					promise.then((result) => expect(result).toBe(defaultValue));
+				}),
+				onUpdating: jest.fn(({ getAsync }) => {
+					const promise = getAsync(atomHandler);
+					promise.then((result) => expect(result).toBe(defaultValue));
+				}),
+				onUpdated: jest.fn(({ getAsync }) => {
+					const promise = getAsync(atomHandler);
+					promise.then((result) => expect(result).toBe(value));
+				}),
+				onDeleting: jest.fn(({ getAsync }) => {
+					const promise = getAsync(atomHandler);
+					promise.then((result) => expect(result).toBe(value));
+				})
+			};
+
+			const atomHandler = atom({
+				key,
+				default: defaultValue,
+				effects: [effect]
+			});
+
+			atomHandler.read(store);
+			atomHandler.save(store, value);
+			store.deletePicoValue(key);
+		});
+
+		it('should allow reading asynchronous values from events', async () => {
+			const store = new PicoStore();
+			const key = 'atom';
+			const defaultValue = 'basic-default';
+			const promiseHandler = createPromise<string, void>();
+
+			const effect: PicoEffect<string> = {
+				onCreated: jest.fn(({ getAsync }) => {
+					const promise = getAsync(atomHandler);
+					promise.then((result) => expect(result).toBe(defaultValue));
+				}),
+				onUpdating: jest.fn(({ getAsync }) => {
+					const promise = getAsync(atomHandler);
+					promise.then((result) => expect(result).toBe(defaultValue));
+				}),
+				onUpdated: jest.fn(({ getAsync }) => {
+					const promise = getAsync(atomHandler);
+					promise.then((result) => expect(result).toBe(defaultValue));
+				}),
+				onDeleting: jest.fn(({ getAsync }) => {
+					const promise = getAsync(atomHandler);
+					promise.then((result) => expect(result).toBe(defaultValue));
+				})
+			};
+
+			const atomHandler = atom({
+				key,
+				default: promiseHandler.promise,
+				effects: [effect]
+			});
+
+			const picoValue = atomHandler.read(store);
+			promiseHandler.resolver(defaultValue);
+			await picoValue.promise;
+			store.deletePicoValue(key);
+		});
+
+		it('should allow setting values from events', () => {
+			const store = new PicoStore();
+			const managerKey = 'manager';
+			const managedKey = 'atom';
+			const defaultValue = 'basic-default';
+			const createdValue = 'created-value';
+			const updatingValue = 'updating-value';
+			const updatedValue = 'updated-value';
+			const deletingValue = 'deleted-value';
+
+			const managedValue = atom({
+				key: managedKey,
+				default: defaultValue
+			});
+
+			const effect: PicoEffect<string> = {
+				onCreated: jest.fn(({ get, set }) => {
+					set(managedValue, createdValue);
+					expect(get(managedValue)).toBe(createdValue);
+				}),
+				onUpdating: jest.fn(({ get, set }) => {
+					set(managedValue, updatingValue);
+					expect(get(managedValue)).toBe(updatingValue);
+				}),
+				onUpdated: jest.fn(({ get, set }) => {
+					set(managedValue, updatedValue);
+					expect(get(managedValue)).toBe(updatedValue);
+				}),
+				onDeleting: jest.fn(({ get, set }) => {
+					set(managedValue, deletingValue);
+					expect(get(managedValue)).toBe(deletingValue);
+				})
+			};
+
+			const atomHandler = atom({
+				key: managerKey,
+				default: defaultValue,
+				effects: [effect]
+			});
+
+			atomHandler.read(store);
+			atomHandler.save(store, 'ignored');
+			store.deletePicoValue(managerKey);
+		});
+
+		it('should allow resetting values from events', () => {
+			const store = new PicoStore();
+			const managerKey = 'manager';
+			const managedKey = 'atom';
+			const defaultValue = 'basic-default';
+			const createdValue = 'created-value';
+			const updatingValue = 'updating-value';
+			const updatedValue = 'updated-value';
+			const deletingValue = 'deleted-value';
+
+			const managedValue = atom({
+				key: managedKey,
+				default: defaultValue
+			});
+
+			const effect: PicoEffect<string> = {
+				onCreated: jest.fn(({ get, set, reset }) => {
+					set(managedValue, createdValue);
+					reset(managedValue);
+					expect(get(managedValue)).toBe(defaultValue);
+				}),
+				onUpdating: jest.fn(({ get, set, reset }) => {
+					set(managedValue, updatingValue);
+					reset(managedValue);
+					expect(get(managedValue)).toBe(defaultValue);
+				}),
+				onUpdated: jest.fn(({ get, set, reset }) => {
+					set(managedValue, updatedValue);
+					reset(managedValue);
+					expect(get(managedValue)).toBe(defaultValue);
+				}),
+				onDeleting: jest.fn(({ get, set, reset }) => {
+					set(managedValue, deletingValue);
+					reset(managedValue);
+					expect(get(managedValue)).toBe(defaultValue);
+				})
+			};
+
+			const atomHandler = atom({
+				key: managerKey,
+				default: defaultValue,
+				effects: [effect]
+			});
+
+			atomHandler.read(store);
+			atomHandler.save(store, 'ignored');
+			store.deletePicoValue(managerKey);
+		});
+	});
+
+	describe('race', () => {
+		it('should handle success race conditions', async () => {
+			const store = new PicoStore();
+			const key = 'key';
+			const firstValue = 'first-value';
+			const secondValue = 'second-value';
+
+			const firstHandler = createPromise<string, void>();
+			const secondHandler = createPromise<string, void>();
+
+			const handler = atom({
+				key,
+				default: firstHandler.promise
+			});
+
+			const value = handler.read(store);
+			const firstPromise = value.promise;
+			handler.save(store, secondHandler.promise);
+
+			secondHandler.resolver(secondValue);
+			await value.promise;
+
+			expect(value.value).toBe(secondValue);
+
+			firstHandler.resolver(firstValue);
+			await firstPromise;
+
+			expect(value.value).toBe(secondValue);
+		});
+
+		it('should handle error race conditions', async () => {
+			const store = new PicoStore();
+			const key = 'key';
+			const firstError = 'first-error';
+			const secondError = 'second-error';
+
+			const firstHandler = createPromise<string, string>();
+			const secondHandler = createPromise<string, string>();
+
+			const handler = atom({
+				key,
+				default: firstHandler.promise
+			});
+
+			const value = handler.read(store);
+			const firstPromise = value.promise;
+			handler.save(store, secondHandler.promise);
+
+			secondHandler.rejecter(secondError);
+			try {
+				await value.promise;
+			} catch {}
+
+			expect(value.error).toBe(secondError);
+
+			firstHandler.rejecter(firstError);
+			try {
+				await firstPromise;
+			} catch {}
+
+			expect(value.error).toBe(secondError);
 		});
 	});
 });

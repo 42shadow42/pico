@@ -75,7 +75,7 @@ describe('selector', () => {
 			expect(store.treeState[key]).toBe(actual);
 		});
 
-		it.only('should allow getting asynchronous atoms as promises', async () => {
+		it('should allow getting asynchronous atoms as promises', async () => {
 			let store = new PicoStore();
 			let promiseHandler = createPromise<string, void>();
 

@@ -78,7 +78,7 @@ export class PicoValue<TState> {
 		this.updateDependencies(dependencies, loader);
 
 		if (isPromise(promiseOrValue)) {
-			this.updatePromise(promiseOrValue, fireEvents);
+			this.updatePromise(promiseOrValue);
 			return;
 		}
 
@@ -202,13 +202,11 @@ export class PicoValue<TState> {
 		this.dependencies = dependencies;
 	};
 
-	private updatePromise = (promise: Promise<TState>, fireEvents: boolean) => {
-		fireEvents && this.onValueUpdating();
+	private updatePromise = (promise: Promise<TState>) => {
 		const status: PromiseStatus = 'pending';
 		this.value = undefined;
 		this.error = undefined;
 		this.promise = Object.assign(promise, { status });
-		fireEvents && this.onValueUpdating();
 
 		promise
 			.then((value: TState) => {

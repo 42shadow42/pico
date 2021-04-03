@@ -56,18 +56,17 @@ const createReader = <TState>(key: string, get: SelectorSource<TState>) => (
 		const getValue = <TState>(
 			handler: InternalReadOnlyPicoHandler<TState>
 		) => {
-			const recoilValue = handler.read(store);
-			dependencies.add(recoilValue as PicoValue<unknown>);
-			return recoilValue.value;
+			const picoValue = handler.read(store);
+			dependencies.add(picoValue as PicoValue<unknown>);
+			return picoValue.value;
 		};
 		const getValueAsync = <TState>(
 			handler: InternalReadOnlyPicoHandler<TState>
 		) => {
-			const recoilValue = handler.read(store);
-			dependencies.add(recoilValue as PicoValue<unknown>);
+			const picoValue = handler.read(store);
+			dependencies.add(picoValue as PicoValue<unknown>);
 			return (
-				recoilValue.promise ||
-				Promise.resolve(recoilValue.value as TState)
+				picoValue.promise || Promise.resolve(picoValue.value as TState)
 			);
 		};
 

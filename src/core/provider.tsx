@@ -3,15 +3,15 @@ import { PicoStore } from './store';
 
 export const InternalPicoContext = createContext<PicoStore>(new PicoStore());
 
-export interface RecoilProviderProps {
+export interface PicoProviderProps {
 	children: ReactNode;
 	tree: PicoStore;
 }
 
-export const RecoilProvider = function RecoilProvider({
+export const PicoProvider = function PicoProvider({
 	children,
 	tree
-}: RecoilProviderProps): JSX.Element {
+}: PicoProviderProps): JSX.Element {
 	return (
 		<InternalPicoContext.Provider value={tree}>
 			{children}

@@ -5,15 +5,15 @@ export const InternalPicoContext = createContext<PicoStore>(new PicoStore());
 
 export interface PicoProviderProps {
 	children: ReactNode;
-	tree: PicoStore;
+	store: PicoStore;
 }
 
 export const PicoProvider = function PicoProvider({
 	children,
-	tree
+	store = new PicoStore()
 }: PicoProviderProps): JSX.Element {
 	return (
-		<InternalPicoContext.Provider value={tree}>
+		<InternalPicoContext.Provider value={store}>
 			{children}
 		</InternalPicoContext.Provider>
 	);

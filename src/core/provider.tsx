@@ -5,7 +5,7 @@ export const InternalPicoContext = createContext<PicoStore>(new PicoStore());
 
 export interface PicoProviderProps {
 	children: ReactNode;
-	store: PicoStore;
+	store?: PicoStore;
 }
 
 export const PicoProvider = function PicoProvider({

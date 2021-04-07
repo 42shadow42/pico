@@ -4,11 +4,16 @@ import {
 	PicoValue,
 	PicoEffect,
 	PicoValueSubscriber,
-	PicoValueType
+	PicoValueType,
+	isPicoValue
 } from './value';
 
+export interface PicoFamily<T> {
+	[key: string]: PicoValue<T> | undefined;
+}
+
 export interface InternalTreeState {
-	[key: string]: PicoValue<unknown> | undefined;
+	[key: string]: PicoValue<unknown> | PicoFamily<unknown> | undefined;
 }
 
 type AtomCreatedHandler = (value: PicoValue<unknown>) => void;
@@ -60,8 +65,14 @@ export class PicoStore {
 			dependencies,
 			loader
 		);
-
-		this.treeState[key] = picoValue as PicoValue<unknown>;
+		const tokens = key.split('::');
+		if (tokens.length === 1) {
+			this.treeState[tokens[0]] = picoValue as PicoValue<unknown>;
+		} else {
+			let family = this.treeState[tokens[0]] as PicoFamily<unknown>;
+			if (!family) family = this.treeState[tokens[0]] = {};
+			family[tokens[1]] = picoValue as PicoValue<unknown>;
+		}
 
 		picoValue.onCreated();
 
@@ -80,9 +91,20 @@ export class PicoStore {
 		return picoValue;
 	};
 
+	resolve = <TState>(key: string) => {
+		const tokens = key.split('::');
+		if (tokens.length === 1)
+			return this.treeState[tokens[0]] as PicoValue<TState> | undefined;
+		const family = this.treeState[tokens[0]] as
+			| PicoFamily<TState>
+			| undefined;
+		if (family) return family[tokens[1]] as PicoValue<TState> | undefined;
+		return undefined;
+	};
+
 	deletePicoValue = (key: string) => {
 		const value = this.treeState[key];
-		if (value) {
+		if (value && isPicoValue(value)) {
 			value.unsubscribe(this.valueSubscriber);
 			value && this.onAtomDeleting(value);
 			value.onDeleting();

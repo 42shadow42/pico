@@ -36,3 +36,8 @@ export type PicoWriterProps = PicoGetterProps & {
 	set: SetPicoState;
 	reset: ResetPicoState;
 };
+
+export interface FamilyHandler<TState> {
+	iterator: InternalReadOnlyPicoHandler<TState[]>;
+	ids: InternalReadWritePicoHandler<string[]>;
+}

@@ -304,3 +304,8 @@ export class PicoValue<TState> {
 		});
 	};
 }
+
+export function isPicoValue<T>(value: unknown): value is PicoValue<T> {
+	const casted = value as PicoValue<T>;
+	return casted.type === 'atom' || casted.type === 'selector';
+}

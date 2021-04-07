@@ -1,11 +1,22 @@
 import isPromise from 'is-promise';
+import { atom } from './atoms';
 import {
 	InternalReadOnlyPicoHandler,
 	InternalReadWritePicoHandler
 } from './handler';
-import { PicoGetterProps, PicoWriterProps, ValueUpdater } from './shared';
+import {
+	FamilyHandler,
+	PicoGetterProps,
+	PicoWriterProps,
+	ValueUpdater
+} from './shared';
 import { PicoStore } from './store';
-import { isPicoErrorResult, isPicoPendingResult, PicoValue } from './value';
+import {
+	isPicoErrorResult,
+	isPicoPendingResult,
+	PicoEffect,
+	PicoValue
+} from './value';
 
 export type SelectorSource<TState> = (
 	props: PicoGetterProps
@@ -19,6 +30,7 @@ export type SelectorReset = (props: PicoWriterProps) => void;
 export interface ReadOnlySelectorConfig<TState> {
 	key: string;
 	get: SelectorSource<TState>;
+	effects?: PicoEffect<TState>[];
 }
 
 export type ReadWriteSelectorConfig<TState> = ReadOnlySelectorConfig<TState> & {
@@ -26,17 +38,17 @@ export type ReadWriteSelectorConfig<TState> = ReadOnlySelectorConfig<TState> & {
 	reset: SelectorReset;
 };
 
-export interface ReadOnlySelectorFamilyConfig<TState, TKey> {
+export interface ReadOnlySelectorFamilyConfig<TState> {
 	key: string;
-	get: (key: TKey) => SelectorSource<TState>;
+	get: (key: string) => SelectorSource<TState>;
+	effects?: PicoEffect<TState>[];
 }
 
 export type ReadWriteSelectorFamilyConfig<
-	TState,
-	TKey
-> = ReadOnlySelectorFamilyConfig<TState, TKey> & {
-	set: (key: TKey) => SelectorWriter<TState>;
-	reset: (key: TKey) => SelectorReset;
+	TState
+> = ReadOnlySelectorFamilyConfig<TState> & {
+	set: (key: string) => SelectorWriter<TState>;
+	reset: (key: string) => SelectorReset;
 };
 
 export interface SelectorLoaderResult<TState> {
@@ -48,8 +60,9 @@ export type SelectorLoader<TState> = () => SelectorLoaderResult<TState>;
 const createReader = <TState>(key: string, get: SelectorSource<TState>) => (
 	store: PicoStore
 ): PicoValue<TState> => {
-	if (store.treeState[key]) {
-		return store.treeState[key] as PicoValue<TState>;
+	let picoValue = store.resolve<TState>(key);
+	if (picoValue) {
+		return picoValue;
 	}
 
 	const loader: SelectorLoader<TState> = () => {
@@ -80,21 +93,14 @@ const createReader = <TState>(key: string, get: SelectorSource<TState>) => (
 			getAsync: getValueAsync
 		});
 
-		// const promises: Promise<unknown>[] = [];
-		// dependencies.forEach((picoValue) => {
-		// 	picoValue.result.promise && promises.push(picoValue.result.promise);
-		// });
-
 		return {
-			// value: value || Promise.all(promises).then(() => loader().value),
-			// value: isPromise(value) ? value.then(() => loader().value): value,
 			value,
 			dependencies
 		};
 	};
 
 	const { value, dependencies } = loader();
-	const picoValue = store.createPicoValue(
+	picoValue = store.createPicoValue(
 		key,
 		'selector',
 		value,
@@ -102,8 +108,6 @@ const createReader = <TState>(key: string, get: SelectorSource<TState>) => (
 		dependencies,
 		loader
 	);
-
-	store.treeState[key] = picoValue as PicoValue<unknown>;
 
 	return picoValue;
 };
@@ -186,47 +190,79 @@ export function selector<TState>(
 	};
 }
 
-function isReadWriteSelectorFamilyConfig<TState, TKey>(
+function isReadWriteSelectorFamilyConfig<TState>(
 	options:
-		| ReadOnlySelectorFamilyConfig<TState, TKey>
-		| ReadWriteSelectorFamilyConfig<TState, TKey>
-): options is ReadWriteSelectorFamilyConfig<TState, TKey> {
-	return (
-		(options as ReadWriteSelectorFamilyConfig<TState, TKey>).set !==
-		undefined
-	);
+		| ReadOnlySelectorFamilyConfig<TState>
+		| ReadWriteSelectorFamilyConfig<TState>
+): options is ReadWriteSelectorFamilyConfig<TState> {
+	return (options as ReadWriteSelectorFamilyConfig<TState>).set !== undefined;
 }
 
-export function selectorFamily<TState, TKey>(
-	options: ReadWriteSelectorFamilyConfig<TState, TKey>
-): (key: TKey) => InternalReadWritePicoHandler<TState>;
-export function selectorFamily<TState, TKey>(
-	options: ReadOnlySelectorFamilyConfig<TState, TKey>
-): (key: TKey) => InternalReadOnlyPicoHandler<TState>;
+export function selectorFamily<TState>(
+	options: ReadWriteSelectorFamilyConfig<TState>
+): ((key: string) => InternalReadWritePicoHandler<TState>) &
+	FamilyHandler<TState>;
+export function selectorFamily<TState>(
+	options: ReadOnlySelectorFamilyConfig<TState>
+): ((key: string) => InternalReadOnlyPicoHandler<TState>) &
+	FamilyHandler<TState>;
 
-export function selectorFamily<TState, TKey>(
+export function selectorFamily<TState>(
 	options:
-		| ReadWriteSelectorFamilyConfig<TState, TKey>
-		| ReadOnlySelectorFamilyConfig<TState, TKey>
-): (
-	id: TKey
-) =>
-	| InternalReadOnlyPicoHandler<TState>
-	| InternalReadWritePicoHandler<TState> {
-	const { key, get } = options;
+		| ReadWriteSelectorFamilyConfig<TState>
+		| ReadOnlySelectorFamilyConfig<TState>
+) {
+	const { key, get, effects = [] } = options;
+
+	const ids = atom<string[]>({ key: `${key}:keys`, default: [] });
+	const tracker: PicoEffect<TState> = {
+		onCreated: ({ key, get, set }) => {
+			const createdId = key.split('::')[1];
+			set(ids, [...get(ids), createdId]);
+		},
+		onDeleting: ({ key, get, set }) => {
+			const deletedId = key.split('::')[1];
+			set(
+				ids,
+				get(ids).filter((id) => deletedId !== id)
+			);
+		}
+	};
+	const effectsWithTracker = [...effects, tracker];
+
 	if (isReadWriteSelectorFamilyConfig(options)) {
 		const { set, reset } = options;
-		return (id: TKey) =>
-			selector<TState>({
+		const accessor = (id: string) =>
+			selector({
 				key: `${key}::${id}`,
 				get: get(id),
 				set: set(id),
-				reset: reset(id)
+				reset: reset(id),
+				effects: effectsWithTracker
 			});
+		const iterator = selector({
+			key: `${key}:iter`,
+			get: ({ get }) => {
+				return [...get(ids)].map((id) => get(accessor(id)));
+			}
+		});
+		accessor.ids = ids;
+		accessor.iterator = iterator;
+		return accessor;
 	}
-	return (id: TKey) =>
+	const accessor = (id: string) =>
 		selector({
 			key: `${key}::${id}`,
-			get: get(id)
+			get: get(id),
+			effects: effectsWithTracker
 		});
+	const iterator = selector({
+		key: `${key}:iter`,
+		get: ({ get }) => {
+			return [...get(ids)].map((id) => get(accessor(id)));
+		}
+	});
+	accessor.ids = ids;
+	accessor.iterator = iterator;
+	return accessor;
 }

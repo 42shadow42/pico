@@ -11,6 +11,7 @@ import {
 } from './value';
 import { isFunction } from 'lodash';
 import { DefaultValue, ValueUpdater } from './shared';
+import { selector } from './selectors';
 
 export interface AtomConfig<TState> {
 	key: string;
@@ -77,7 +78,7 @@ function resetState<TState>(
 	effects: PicoEffect<TState>[]
 ) {
 	const { value, dependencies } = resolveDefaultValue(store, defaultValue);
-	const picoValue = store.treeState[key] as PicoValue<TState> | undefined;
+	const picoValue = store.resolve<TState>(key);
 	if (picoValue) {
 		picoValue.update(value, dependencies);
 	} else {
@@ -99,7 +100,7 @@ function saveState<TState>(
 		defaultValue,
 		effects
 	);
-	const picoValue = store.treeState[key] as PicoValue<TState> | undefined;
+	const picoValue = store.resolve<TState>(key);
 	if (picoValue) {
 		picoValue.update(newValue, dependencies);
 	} else {
@@ -114,7 +115,8 @@ function readState<TState>(
 	effects: PicoEffect<TState>[]
 ) {
 	let { value, dependencies } = resolveDefaultValue(store, defaultValue);
-	if (!store.treeState[key]) {
+	const picoValue = store.resolve<TState>(key);
+	if (!picoValue) {
 		return store.createPicoValue<TState>(
 			key,
 			'atom',
@@ -123,7 +125,7 @@ function readState<TState>(
 			dependencies
 		);
 	}
-	return store.treeState[key] as PicoValue<TState>;
+	return picoValue;
 }
 
 export function atom<TState>({
@@ -141,11 +143,43 @@ export function atom<TState>({
 	};
 }
 
-export function atomFamily<TState, TKey>({
+export function atomFamily<TState>({
 	key,
 	default: defaultValue,
 	effects = []
 }: AtomConfig<TState>) {
-	return (id: TKey) =>
-		atom({ key: `${key}::${id}`, default: defaultValue, effects });
+	const ids = atom<string[]>({ key: `${key}:keys`, default: [] });
+	const tracker: PicoEffect<TState> = {
+		onCreated: ({ key, get, set }) => {
+			const createdId = key.split('::')[1];
+			setTimeout(() => set(ids, [...get(ids), createdId]), 0);
+		},
+		onDeleting: ({ key, get, set }) => {
+			const deletedId = key.split('::')[1];
+			setTimeout(
+				() =>
+					set(
+						ids,
+						get(ids).filter((id) => deletedId !== id)
+					),
+				0
+			);
+		}
+	};
+	const iterator = selector({
+		key: `${key}:iter`,
+		get: ({ get }) => {
+			return [...get(ids)].map((id) => get(accessor(id)));
+		}
+	});
+	const effectsWithTracker = [...effects, tracker];
+	const accessor = (id: string) =>
+		atom({
+			key: `${key}::${id}`,
+			default: defaultValue,
+			effects: effectsWithTracker
+		});
+	accessor.ids = ids;
+	accessor.iterator = iterator;
+	return accessor;
 }

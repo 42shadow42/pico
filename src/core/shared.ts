@@ -2,7 +2,6 @@ import {
 	InternalReadOnlyPicoHandler,
 	InternalReadWritePicoHandler
 } from './handler';
-import { PicoValue } from './value';
 
 export type DefaultValue<TState> =
 	| TState
@@ -24,7 +23,7 @@ export type ResetPicoState = <TState>(
 ) => void;
 export type GetPicoState = <TState>(
 	handler: InternalReadOnlyPicoHandler<TState>
-) => TState | undefined;
+) => TState;
 export type GetAsyncPicoState = <TState>(
 	handler: InternalReadOnlyPicoHandler<TState>
 ) => Promise<TState>;

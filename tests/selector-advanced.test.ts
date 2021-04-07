@@ -28,7 +28,7 @@ describe('selector-advanced', () => {
 
 			const actual = handler.read(store);
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 
@@ -55,7 +55,7 @@ describe('selector-advanced', () => {
 
 			const actual = handler.read(store);
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 
@@ -71,8 +71,8 @@ describe('selector-advanced', () => {
 				key,
 				default: selector({
 					key: 'middle-handler',
-					get: ({ get }) => {
-						return get(
+					get: ({ getAsync }) => {
+						return getAsync(
 							atom({
 								key: 'inner-handler',
 								default: promiseHandler.promise
@@ -84,16 +84,16 @@ describe('selector-advanced', () => {
 
 			const actual = handler.read(store);
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toStrictEqual(promiseHandler.promise);
-			expect(actual.promise?.status).toBe('pending');
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actual);
 
 			promiseHandler.resolver(defaultValue);
-			await actual.promise;
+			await actual.result.promise;
 
-			expect(actual.promise?.status).toBe('resolved');
-			expect(actual.value).toBe(expected);
+			expect(actual.result.promise?.status).toBe('resolved');
+			expect(actual.result.value).toBe(expected);
 		});
 
 		it('should apply selector promise handler errors', async () => {
@@ -108,8 +108,8 @@ describe('selector-advanced', () => {
 				key,
 				default: selector({
 					key: 'middle-handler',
-					get: ({ get }) => {
-						return get(
+					get: ({ getAsync }) => {
+						return getAsync(
 							atom({
 								key: 'inner-handler',
 								default: promiseHandler.promise
@@ -121,20 +121,17 @@ describe('selector-advanced', () => {
 
 			const actual = handler.read(store);
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise).toStrictEqual(promiseHandler.promise);
 			expect(store.treeState[key]).toBe(actual);
 
 			promiseHandler.rejecter(error);
 			try {
-				await actual.promise;
+				await actual.result.promise;
 			} catch {}
 
-			await Promise.resolve();
-			await Promise.resolve();
-
-			expect(actual.value).toBeUndefined();
-			expect(actual.error).toBe(expected);
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.error).toBe(expected);
 		});
 	});
 
@@ -156,23 +153,22 @@ describe('selector-advanced', () => {
 				default: value
 			});
 
-			let handler = selector<string>({
+			let handler = selector({
 				key,
-				get: ({ get }) => get<string>(atomHandler) as string,
-				set: ({ get, set }) =>
-					set<string>(atomHandler, get(copied) as string),
+				get: ({ get }) => get(atomHandler),
+				set: ({ get, set }) => set(atomHandler, get(copied)),
 				reset: ({ reset }) => reset(atomHandler)
 			});
 
 			handler.save(store, 'ignored');
 			const actualSelector = handler.read(store);
 
-			expect(actualSelector.value).toBe(expected);
+			expect(actualSelector.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actualSelector);
 
 			const actualAtom = handler.read(store);
 
-			expect(actualAtom.value).toBe(expected);
+			expect(actualAtom.result.value).toBe(expected);
 		});
 
 		it('should allow reading synchronous values asynchronously on write', async () => {
@@ -194,31 +190,28 @@ describe('selector-advanced', () => {
 
 			let handler = selector<string>({
 				key,
-				get: ({ get }) => get<string>(atomHandler) as string,
+				get: ({ getAsync }) => getAsync(atomHandler),
 				set: ({ getAsync, set }) =>
-					set<string>(
-						atomHandler,
-						getAsync(copied) as Promise<string>
-					),
+					set<string>(atomHandler, getAsync(copied)),
 				reset: ({ reset }) => reset(atomHandler)
 			});
 
 			handler.save(store, 'ignored');
 			const actualSelector = handler.read(store);
 
-			expect(actualSelector.value).toBeUndefined();
-			expect(actualSelector.promise).toBeDefined();
-			expect(actualSelector.promise?.status).toBe('pending');
+			expect(actualSelector.result.value).toBeUndefined();
+			expect(actualSelector.result.promise).toBeDefined();
+			expect(actualSelector.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actualSelector);
 
-			await actualSelector.promise;
+			await actualSelector.result.promise;
 
-			expect(actualSelector.value).toBe(expected);
-			expect(actualSelector.promise?.status).toBe('resolved');
+			expect(actualSelector.result.value).toBe(expected);
+			expect(actualSelector.result.promise?.status).toBe('resolved');
 
 			const actualAtom = handler.read(store);
 
-			expect(actualAtom.value).toBe(expected);
+			expect(actualAtom.result.value).toBe(expected);
 		});
 
 		it('should allow reading asynchronous values on write', async () => {
@@ -242,32 +235,29 @@ describe('selector-advanced', () => {
 
 			let handler = selector<string>({
 				key,
-				get: ({ get }) => get<string>(atomHandler) as string,
+				get: ({ getAsync }) => getAsync(atomHandler),
 				set: ({ getAsync, set }) =>
-					set<string>(
-						atomHandler,
-						getAsync(copied) as Promise<string>
-					),
+					set<string>(atomHandler, getAsync(copied)),
 				reset: ({ reset }) => reset(atomHandler)
 			});
 
 			handler.save(store, 'ignored');
 			const actualSelector = handler.read(store);
 
-			expect(actualSelector.value).toBeUndefined();
-			expect(actualSelector.promise).toBeDefined();
-			expect(actualSelector.promise?.status).toBe('pending');
+			expect(actualSelector.result.value).toBeUndefined();
+			expect(actualSelector.result.promise).toBeDefined();
+			expect(actualSelector.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actualSelector);
 
 			promiseHandler.resolver(value);
-			await actualSelector.promise;
+			await actualSelector.result.promise;
 
-			expect(actualSelector.value).toBe(expected);
-			expect(actualSelector.promise?.status).toBe('resolved');
+			expect(actualSelector.result.value).toBe(expected);
+			expect(actualSelector.result.promise?.status).toBe('resolved');
 
 			const actualAtom = handler.read(store);
 
-			expect(actualAtom.value).toBe(expected);
+			expect(actualAtom.result.value).toBe(expected);
 		});
 
 		it('should allow reseting values on write', () => {
@@ -282,10 +272,10 @@ describe('selector-advanced', () => {
 				default: defaultValue
 			});
 
-			let handler = selector<string>({
+			let handler = selector({
 				key,
-				get: ({ get }) => get<string>(atomHandler) as string,
-				set: ({ reset }) => reset<string>(atomHandler),
+				get: ({ get }) => get(atomHandler),
+				set: ({ reset }) => reset(atomHandler),
 				reset: ({ reset }) => reset(atomHandler)
 			});
 
@@ -294,12 +284,12 @@ describe('selector-advanced', () => {
 
 			const actualSelector = handler.read(store);
 
-			expect(actualSelector.value).toBe(expected);
+			expect(actualSelector.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actualSelector);
 
 			const actualAtom = handler.read(store);
 
-			expect(actualAtom.value).toBe(expected);
+			expect(actualAtom.result.value).toBe(expected);
 		});
 	});
 
@@ -321,23 +311,22 @@ describe('selector-advanced', () => {
 				default: value
 			});
 
-			let handler = selector<string>({
+			let handler = selector({
 				key,
-				get: ({ get }) => get<string>(atomHandler) as string,
+				get: ({ get }) => get(atomHandler),
 				set: () => {},
-				reset: ({ set, get }) =>
-					set<string>(atomHandler, get(copied) as string)
+				reset: ({ set, get }) => set(atomHandler, get(copied))
 			});
 
 			handler.reset(store);
 			const actualSelector = handler.read(store);
 
-			expect(actualSelector.value).toBe(expected);
+			expect(actualSelector.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actualSelector);
 
 			const actualAtom = handler.read(store);
 
-			expect(actualAtom.value).toBe(expected);
+			expect(actualAtom.result.value).toBe(expected);
 		});
 
 		it('should allow reading synchronous values asynchronously on write', async () => {
@@ -357,33 +346,29 @@ describe('selector-advanced', () => {
 				default: value
 			});
 
-			let handler = selector<string>({
+			let handler = selector({
 				key,
-				get: ({ get }) => get<string>(atomHandler) as string,
+				get: ({ getAsync }) => getAsync(atomHandler),
 				set: () => {},
-				reset: ({ getAsync, set }) =>
-					set<string>(
-						atomHandler,
-						getAsync(copied) as Promise<string>
-					)
+				reset: ({ getAsync, set }) => set(atomHandler, getAsync(copied))
 			});
 
 			handler.reset(store);
 			const actualSelector = handler.read(store);
 
-			expect(actualSelector.value).toBeUndefined();
-			expect(actualSelector.promise).toBeDefined();
-			expect(actualSelector.promise?.status).toBe('pending');
+			expect(actualSelector.result.value).toBeUndefined();
+			expect(actualSelector.result.promise).toBeDefined();
+			expect(actualSelector.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actualSelector);
 
-			await actualSelector.promise;
+			await actualSelector.result.promise;
 
-			expect(actualSelector.value).toBe(expected);
-			expect(actualSelector.promise?.status).toBe('resolved');
+			expect(actualSelector.result.value).toBe(expected);
+			expect(actualSelector.result.promise?.status).toBe('resolved');
 
 			const actualAtom = handler.read(store);
 
-			expect(actualAtom.value).toBe(expected);
+			expect(actualAtom.result.value).toBe(expected);
 		});
 
 		it('should allow reading asynchronous values on write', async () => {
@@ -405,34 +390,30 @@ describe('selector-advanced', () => {
 				default: promiseHandler.promise
 			});
 
-			let handler = selector<string>({
+			let handler = selector({
 				key,
-				get: ({ get }) => get<string>(atomHandler) as string,
+				get: ({ getAsync }) => getAsync(atomHandler),
 				set: () => {},
-				reset: ({ getAsync, set }) =>
-					set<string>(
-						atomHandler,
-						getAsync(copied) as Promise<string>
-					)
+				reset: ({ getAsync, set }) => set(atomHandler, getAsync(copied))
 			});
 
 			handler.reset(store);
 			const actualSelector = handler.read(store);
 
-			expect(actualSelector.value).toBeUndefined();
-			expect(actualSelector.promise).toBeDefined();
-			expect(actualSelector.promise?.status).toBe('pending');
+			expect(actualSelector.result.value).toBeUndefined();
+			expect(actualSelector.result.promise).toBeDefined();
+			expect(actualSelector.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actualSelector);
 
 			promiseHandler.resolver(value);
-			await actualSelector.promise;
+			await actualSelector.result.promise;
 
-			expect(actualSelector.value).toBe(expected);
-			expect(actualSelector.promise?.status).toBe('resolved');
+			expect(actualSelector.result.value).toBe(expected);
+			expect(actualSelector.result.promise?.status).toBe('resolved');
 
 			const actualAtom = handler.read(store);
 
-			expect(actualAtom.value).toBe(expected);
+			expect(actualAtom.result.value).toBe(expected);
 		});
 
 		it('should allow reseting values on write', () => {
@@ -447,10 +428,10 @@ describe('selector-advanced', () => {
 				default: defaultValue
 			});
 
-			let handler = selector<string>({
+			let handler = selector({
 				key,
-				get: ({ get }) => get<string>(atomHandler) as string,
-				set: ({ reset }) => reset<string>(atomHandler),
+				get: ({ get }) => get(atomHandler),
+				set: ({ reset }) => reset(atomHandler),
 				reset: ({ reset }) => reset(atomHandler)
 			});
 
@@ -459,12 +440,12 @@ describe('selector-advanced', () => {
 
 			const actualSelector = handler.read(store);
 
-			expect(actualSelector.value).toBe(expected);
+			expect(actualSelector.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actualSelector);
 
 			const actualAtom = handler.read(store);
 
-			expect(actualAtom.value).toBe(expected);
+			expect(actualAtom.result.value).toBe(expected);
 		});
 	});
 });

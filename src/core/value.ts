@@ -1,6 +1,7 @@
 import isPromise from 'is-promise';
+import { result } from 'lodash';
 import { InternalReadOnlyPicoHandler } from './handler';
-import { SelectorLoader } from './selectors';
+import { SelectorLoader, SelectorLoaderResult } from './selectors';
 import { PicoWriterProps } from './shared';
 import { PicoStore } from './store';
 
@@ -33,12 +34,48 @@ export interface PicoEffect<TState> {
 
 export type PicoPromise<TState> = Promise<TState> & { status: PromiseStatus };
 
+export type PicoPendingResult<TState> = {
+	value: undefined;
+	promise: PicoPromise<TState>;
+	error: undefined;
+};
+export type PicoErrorResult<TState> = {
+	value: undefined;
+	promise: PicoPromise<TState>;
+	error: unknown;
+};
+export type PicoValueResult<TState> = {
+	value: TState;
+	promise: PicoPromise<TState> | undefined;
+	error: undefined;
+};
+export type PicoResult<TState> =
+	| PicoPendingResult<TState>
+	| PicoErrorResult<TState>
+	| PicoValueResult<TState>;
+
+export function isPicoPendingResult<TState>(
+	result: PicoResult<TState>
+): result is PicoPendingResult<TState> {
+	return !!result.promise && result.promise.status === 'pending';
+}
+
+export function isPicoErrorResult<TState>(
+	result: PicoResult<TState>
+): result is PicoErrorResult<TState> {
+	return !!result.promise && result.promise.status === 'rejected';
+}
+
+export function isPicoValueResult<TState>(
+	result: PicoResult<TState>
+): result is PicoValueResult<TState> {
+	return !!result.value;
+}
+
 export class PicoValue<TState> {
 	key: string;
 	type: PicoValueType;
-	value: TState | undefined;
-	promise: PicoPromise<TState> | undefined;
-	error: unknown;
+	result!: PicoResult<TState>;
 
 	private store: PicoStore;
 	private effects: PicoEffect<TState>[];
@@ -83,7 +120,11 @@ export class PicoValue<TState> {
 		}
 
 		fireEvents && this.onValueUpdating();
-		this.value = promiseOrValue;
+		this.result = {
+			value: promiseOrValue,
+			promise: undefined,
+			error: undefined
+		};
 		fireEvents && this.onValueUpdated();
 	};
 
@@ -157,11 +198,20 @@ export class PicoValue<TState> {
 
 	private getPicoWriterProps = (): PicoWriterProps => {
 		return {
-			get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
-				handler.read(this.store).value as TState,
-			getAsync: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
-				handler.read(this.store).promise ||
-				Promise.resolve(handler.read(this.store).value as TState),
+			get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) => {
+				const result = handler.read(this.store).result;
+				if (isPicoPendingResult(result)) throw result.promise;
+				if (isPicoErrorResult(result)) throw result.error;
+				return result.value;
+			},
+			getAsync: <TState>(
+				handler: InternalReadOnlyPicoHandler<TState>
+			) => {
+				const result = handler.read(this.store).result;
+				if (isPicoPendingResult(result)) return result.promise;
+				if (isPicoErrorResult(result)) return result.promise;
+				return Promise.resolve(result.value);
+			},
 			set: (handler, value) => handler.save(this.store, value),
 			reset: (handler) => handler.reset(this.store)
 		};
@@ -176,19 +226,29 @@ export class PicoValue<TState> {
 				this.getDependencies().forEach((dependency) =>
 					dependency.unsubscribe(watcher)
 				);
-				const { value, dependencies } = loader
-					? loader()
-					: {
-							value: picoValue.value || picoValue.promise,
-							dependencies: new Set<PicoValue<unknown>>([
-								picoValue as PicoValue<unknown>
-							])
-					  };
-				this.update(
-					value as TState | Promise<TState>,
-					dependencies,
-					loader
-				);
+				let result: SelectorLoaderResult<TState>;
+				if (loader) {
+					result = loader();
+				} else if (
+					isPicoPendingResult(picoValue.result) ||
+					isPicoErrorResult(picoValue.result)
+				) {
+					result = {
+						value: picoValue.result.promise,
+						dependencies: new Set<PicoValue<unknown>>([
+							picoValue as PicoValue<unknown>
+						])
+					};
+				} else {
+					result = {
+						value: picoValue.result.value,
+						dependencies: new Set<PicoValue<unknown>>([
+							picoValue as PicoValue<unknown>
+						])
+					};
+				}
+
+				this.update(result.value, result.dependencies, loader);
 				dependencies.forEach((dependency) =>
 					dependency.subscribe(watcher)
 				);
@@ -204,34 +264,43 @@ export class PicoValue<TState> {
 
 	private updatePromise = (promise: Promise<TState>) => {
 		const status: PromiseStatus = 'pending';
-		this.value = undefined;
-		this.error = undefined;
-		this.promise = Object.assign(promise, { status });
+		this.result = {
+			value: undefined,
+			promise: Object.assign(promise, { status }),
+			error: undefined
+		};
 
 		promise
 			.then((value: TState) => {
 				// Ignore results that aren't currently pending.
-				if (this.promise !== promise) {
+				if (this.result.promise !== promise) {
 					return;
 				}
-				this.onValueUpdating();
-				this.promise.status = 'resolved';
-				this.value = value;
-				this.error = undefined;
-				this.onValueUpdated();
+
+				// this.onValueUpdating();
+				const status: PromiseStatus = 'resolved';
+				this.result = {
+					value: value,
+					promise: Object.assign(promise, { status }),
+					error: undefined
+				};
+				// this.onValueUpdated();
 			})
 			.catch(() => {});
 
 		promise.catch((error: unknown) => {
 			// Ignore results that aren't currently pending.
-			if (this.promise !== promise) {
+			if (this.result.promise !== promise) {
 				return;
 			}
-			this.onValueUpdating();
-			this.promise.status = 'rejected';
-			this.error = error;
-			this.value = undefined;
-			this.onValueUpdated();
+			// this.onValueUpdating();
+			const status: PromiseStatus = 'rejected';
+			this.result = {
+				value: undefined,
+				promise: Object.assign(promise, { status }),
+				error: error
+			};
+			// this.onValueUpdated();
 		});
 	};
 }

@@ -5,6 +5,7 @@ import {
 	useEffect,
 	useState
 } from 'react';
+import { isPicoErrorResult } from 'src/core/value';
 import { InternalPicoContext } from '../core/provider';
 import { PicoStoreSubscriber } from '../core/store';
 
@@ -87,17 +88,17 @@ export const HistoryObserver = ({ children, manual }: HistoryObserverProps) => {
 					store.createPicoValue(
 						picoValue.key,
 						'atom',
-						picoValue.value,
+						picoValue.result.value || picoValue.result.promise,
 						picoValue.getEffects(),
 						picoValue.getDependencies()
 					)
 				);
 			},
 			onAtomUpdating: (picoValue): void => {
-				const value = picoValue.value;
+				const result = picoValue.result;
 				const dependencies = picoValue.getDependencies();
 				history?.internalAddBatchComponent(() => {
-					picoValue.update(value, dependencies);
+					picoValue.update(result.value, dependencies);
 				});
 			}
 		};

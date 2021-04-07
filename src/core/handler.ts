@@ -16,5 +16,9 @@ export type InternalReadWritePicoHandler<
 export function isInternalReadOnlyPicoHandler<TState>(
 	handler: any
 ): handler is InternalReadOnlyPicoHandler<TState> {
-	return handler.read !== undefined && typeof handler.read === 'function';
+	return (
+		handler &&
+		handler.read !== undefined &&
+		typeof handler.read === 'function'
+	);
 }

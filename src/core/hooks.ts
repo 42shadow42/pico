@@ -5,7 +5,14 @@ import {
 } from './handler';
 import { InternalPicoContext } from './provider';
 import { PicoWriterProps, ValueUpdater } from './shared';
-import { PicoValue, PicoValueSubscriber, PromiseStatus } from './value';
+import {
+	isPicoErrorResult,
+	isPicoPendingResult,
+	PicoResult,
+	PicoValue,
+	PicoValueSubscriber,
+	PromiseStatus
+} from './value';
 
 export type PicoSetter<TState> = (value: ValueUpdater<TState>) => void;
 export type PicoState<TState> = [TState, PicoSetter<TState>];
@@ -16,21 +23,16 @@ export const usePicoValue = function <TState>(
 ): TState {
 	const store = useContext(InternalPicoContext);
 
-	const { value, subscribe, unsubscribe, promise, error } = handler.read(
-		store
-	);
+	const { subscribe, unsubscribe, result } = handler.read(store);
 
-	const [latestValue, setLatestValue] = useState<TState>(value as TState);
-	const [latestPromise, setLatestPromise] = useState<
-		(Promise<TState> & { status: PromiseStatus }) | undefined
-	>(promise);
-	const [latestError, setLatestError] = useState<unknown>(error);
+	const [latestResult, setLatestResult] = useState<PicoResult<TState>>(
+		result
+	);
 
 	useEffect(() => {
 		const subcriber: PicoValueSubscriber<TState> = {
-			onUpdated: ({ value, promise, error }) => {
-				setLatestValue(value as TState);
-				setLatestPromise(promise), setLatestError(error);
+			onUpdated: ({ result }) => {
+				setLatestResult(result);
 			}
 		};
 
@@ -39,15 +41,15 @@ export const usePicoValue = function <TState>(
 		return () => unsubscribe(subcriber);
 	}, [handler, subscribe, unsubscribe]);
 
-	if (latestPromise && latestPromise.status === 'pending') {
-		throw latestPromise;
+	if (isPicoPendingResult(latestResult)) {
+		throw latestResult.promise;
 	}
 
-	if (latestPromise && latestPromise.status === 'rejected') {
-		throw latestError;
+	if (isPicoErrorResult(latestResult)) {
+		throw latestResult.error;
 	}
 
-	return latestValue;
+	return latestResult.value;
 };
 
 export const useSetPicoValue = function <TState>(
@@ -77,11 +79,18 @@ export const usePicoCallback = function <TFunction extends Function>(
 ): TFunction {
 	const store = useContext(InternalPicoContext);
 	const props: PicoWriterProps = {
-		get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
-			handler.read(store).value as TState,
-		getAsync: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
-			handler.read(store).promise ||
-			Promise.resolve(handler.read(store).value as TState),
+		get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) => {
+			const result = handler.read(store).result;
+			if (isPicoPendingResult(result)) throw result.promise;
+			if (isPicoErrorResult(result)) throw result.error;
+			return result.value;
+		},
+		getAsync: <TState>(handler: InternalReadOnlyPicoHandler<TState>) => {
+			const result = handler.read(store).result;
+			if (isPicoPendingResult(result)) return result.promise;
+			if (isPicoErrorResult(result)) return result.promise;
+			return Promise.resolve(result.value);
+		},
 		set: <TState>(
 			handler: InternalReadWritePicoHandler<TState>,
 			value: ValueUpdater<TState>

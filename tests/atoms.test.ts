@@ -19,7 +19,7 @@ describe('atom', () => {
 
 			const actual = handler.read(store);
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 
@@ -36,7 +36,7 @@ describe('atom', () => {
 
 			const actual = handler.read(store);
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 
@@ -55,16 +55,16 @@ describe('atom', () => {
 
 			const actual = handler.read(store);
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toStrictEqual(promiseHandler.promise);
-			expect(actual.promise?.status).toBe('pending');
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actual);
 
 			promiseHandler.resolver(defaultValue);
-			await actual.promise;
+			await actual.result.promise;
 
-			expect(actual.value).toBe(expected);
-			expect(actual.promise?.status).toBe('resolved');
+			expect(actual.result.value).toBe(expected);
+			expect(actual.result.promise?.status).toBe('resolved');
 		});
 
 		it('should apply promise errors', async () => {
@@ -82,19 +82,19 @@ describe('atom', () => {
 
 			const actual = handler.read(store);
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toStrictEqual(promiseHandler.promise);
-			expect(actual.promise?.status).toBe('pending');
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actual);
 
 			promiseHandler.rejecter(error);
 			try {
-				await actual.promise;
+				await actual.result.promise;
 			} catch {}
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise?.status).toBe('rejected');
-			expect(actual.error).toBe(expected);
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise?.status).toBe('rejected');
+			expect(actual.result.error).toBe(expected);
 		});
 	});
 
@@ -114,7 +114,7 @@ describe('atom', () => {
 			handler.save(store, savedValue);
 			const actual = handler.read(store);
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 
@@ -133,7 +133,7 @@ describe('atom', () => {
 			handler.save(store, () => savedValue);
 			const actual = handler.read(store);
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 
@@ -154,16 +154,16 @@ describe('atom', () => {
 			handler.save(store, promiseHandler.promise);
 			const actual = handler.read(store);
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toStrictEqual(promiseHandler.promise);
-			expect(actual.promise?.status).toBe('pending');
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actual);
 
 			promiseHandler.resolver(savedValue);
-			await actual.promise;
+			await actual.result.promise;
 
-			expect(actual.value).toBe(expected);
-			expect(actual.promise?.status).toBe('resolved');
+			expect(actual.result.value).toBe(expected);
+			expect(actual.result.promise?.status).toBe('resolved');
 		});
 
 		it('should write promise errors', async () => {
@@ -183,19 +183,19 @@ describe('atom', () => {
 			handler.save(store, promiseHandler.promise);
 			const actual = handler.read(store);
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toStrictEqual(promiseHandler.promise);
-			expect(actual.promise?.status).toBe('pending');
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actual);
 
 			promiseHandler.rejecter(savedError);
 			try {
-				await actual.promise;
+				await actual.result.promise;
 			} catch {}
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise?.status).toBe('rejected');
-			expect(actual.error).toBe(expected);
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise?.status).toBe('rejected');
+			expect(actual.result.error).toBe(expected);
 		});
 
 		it('should write handler values', () => {
@@ -219,7 +219,7 @@ describe('atom', () => {
 			handler.save(store, writeHandler);
 			const actual = handler.read(store);
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 	});
@@ -242,7 +242,7 @@ describe('atom', () => {
 			const actual = handler.read(store);
 
 			expect(actual).toBe(initial);
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 
@@ -263,7 +263,7 @@ describe('atom', () => {
 			const actual = handler.read(store);
 
 			expect(actual).toBe(initial);
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 
@@ -286,16 +286,16 @@ describe('atom', () => {
 			const actual = handler.read(store);
 
 			expect(actual).toBe(initial);
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toStrictEqual(promiseHandler.promise);
-			expect(actual.promise?.status).toBe('pending');
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actual);
 
 			promiseHandler.resolver(savedValue);
-			await actual.promise;
+			await actual.result.promise;
 
-			expect(actual.value).toBe(expected);
-			expect(actual.promise?.status).toBe('resolved');
+			expect(actual.result.value).toBe(expected);
+			expect(actual.result.promise?.status).toBe('resolved');
 		});
 
 		it('should overwrite promise errors', async () => {
@@ -317,19 +317,19 @@ describe('atom', () => {
 			const actual = handler.read(store);
 
 			expect(actual).toBe(initial);
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toStrictEqual(promiseHandler.promise);
-			expect(actual.promise?.status).toBe('pending');
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actual);
 
 			promiseHandler.rejecter(savedError);
 			try {
-				await actual.promise;
+				await actual.result.promise;
 			} catch {}
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise?.status).toBe('rejected');
-			expect(actual.error).toBe(expected);
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise?.status).toBe('rejected');
+			expect(actual.result.error).toBe(expected);
 		});
 
 		it('should overwrite handler values', () => {
@@ -355,7 +355,7 @@ describe('atom', () => {
 			const actual = handler.read(store);
 
 			expect(actual).toBe(initial);
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 	});
@@ -377,7 +377,7 @@ describe('atom', () => {
 			handler.reset(store);
 			const actual = handler.read(store);
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 
@@ -397,7 +397,7 @@ describe('atom', () => {
 			handler.reset(store);
 			const actual = handler.read(store);
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 
@@ -419,16 +419,16 @@ describe('atom', () => {
 			handler.reset(store);
 			const actual = handler.read(store);
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toStrictEqual(promiseHandler.promise);
-			expect(actual.promise?.status).toBe('pending');
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actual);
 
 			promiseHandler.resolver(defaultValue);
-			await actual.promise;
+			await actual.result.promise;
 
-			expect(actual.value).toBe(expected);
-			expect(actual.promise?.status).toBe('resolved');
+			expect(actual.result.value).toBe(expected);
+			expect(actual.result.promise?.status).toBe('resolved');
 		});
 
 		it('should reset promise errors', async () => {
@@ -449,19 +449,19 @@ describe('atom', () => {
 			handler.reset(store);
 			const actual = handler.read(store);
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toStrictEqual(promiseHandler.promise);
-			expect(actual.promise?.status).toBe('pending');
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actual);
 
 			promiseHandler.rejecter(defaultError);
 			try {
-				await actual.promise;
+				await actual.result.promise;
 			} catch {}
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise?.status).toBe('rejected');
-			expect(actual.error).toBe(expected);
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise?.status).toBe('rejected');
+			expect(actual.result.error).toBe(expected);
 		});
 
 		it('should reset handler values', () => {
@@ -484,7 +484,7 @@ describe('atom', () => {
 			handler.reset(store);
 			const actual = handler.read(store);
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 	});

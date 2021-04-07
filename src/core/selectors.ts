@@ -1,10 +1,11 @@
+import isPromise from 'is-promise';
 import {
 	InternalReadOnlyPicoHandler,
 	InternalReadWritePicoHandler
 } from './handler';
 import { PicoGetterProps, PicoWriterProps, ValueUpdater } from './shared';
 import { PicoStore } from './store';
-import { PicoValue } from './value';
+import { isPicoErrorResult, isPicoPendingResult, PicoValue } from './value';
 
 export type SelectorSource<TState> = (
 	props: PicoGetterProps
@@ -38,7 +39,7 @@ export type ReadWriteSelectorFamilyConfig<
 	reset: (key: TKey) => SelectorReset;
 };
 
-interface SelectorLoaderResult<TState> {
+export interface SelectorLoaderResult<TState> {
 	value: TState | Promise<TState>;
 	dependencies: Set<PicoValue<unknown>>;
 }
@@ -58,16 +59,20 @@ const createReader = <TState>(key: string, get: SelectorSource<TState>) => (
 		) => {
 			const picoValue = handler.read(store);
 			dependencies.add(picoValue as PicoValue<unknown>);
-			return picoValue.value;
+			const result = picoValue.result;
+			if (isPicoPendingResult(result)) throw result.promise;
+			if (isPicoErrorResult(result)) throw result.error;
+			return result.value;
 		};
 		const getValueAsync = <TState>(
 			handler: InternalReadOnlyPicoHandler<TState>
 		) => {
 			const picoValue = handler.read(store);
 			dependencies.add(picoValue as PicoValue<unknown>);
-			return (
-				picoValue.promise || Promise.resolve(picoValue.value as TState)
-			);
+			const result = picoValue.result;
+			if (isPicoPendingResult(result)) return result.promise;
+			if (isPicoErrorResult(result)) return result.promise;
+			return Promise.resolve(result.value);
 		};
 
 		const value = get({
@@ -75,13 +80,15 @@ const createReader = <TState>(key: string, get: SelectorSource<TState>) => (
 			getAsync: getValueAsync
 		});
 
-		const promises: Promise<unknown>[] = [];
-		dependencies.forEach((picoValue) => {
-			picoValue.promise && promises.push(picoValue.promise);
-		});
+		// const promises: Promise<unknown>[] = [];
+		// dependencies.forEach((picoValue) => {
+		// 	picoValue.result.promise && promises.push(picoValue.result.promise);
+		// });
 
 		return {
-			value: value || Promise.all(promises).then(() => loader().value),
+			// value: value || Promise.all(promises).then(() => loader().value),
+			// value: isPromise(value) ? value.then(() => loader().value): value,
+			value,
 			dependencies
 		};
 	};
@@ -107,11 +114,20 @@ const createWriter = <TState>(set: SelectorWriter<TState>) => (
 ) => {
 	set(
 		{
-			get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
-				handler.read(store).value as TState,
-			getAsync: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
-				handler.read(store).promise ||
-				Promise.resolve(handler.read(store).value as TState),
+			get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) => {
+				const result = handler.read(store).result;
+				if (isPicoPendingResult(result)) throw result.promise;
+				if (isPicoErrorResult(result)) throw result.error;
+				return result.value;
+			},
+			getAsync: <TState>(
+				handler: InternalReadOnlyPicoHandler<TState>
+			) => {
+				const result = handler.read(store).result;
+				if (isPicoPendingResult(result)) return result.promise;
+				if (isPicoErrorResult(result)) return result.promise;
+				return Promise.resolve(result.value);
+			},
 			set: (handler, value) => handler.save(store, value),
 			reset: (handler) => handler.reset(store)
 		},
@@ -121,11 +137,18 @@ const createWriter = <TState>(set: SelectorWriter<TState>) => (
 
 const createReset = (reset: SelectorReset) => (store: PicoStore) => {
 	reset({
-		get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
-			handler.read(store).value as TState,
-		getAsync: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
-			handler.read(store).promise ||
-			Promise.resolve(handler.read(store).value as TState),
+		get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) => {
+			const result = handler.read(store).result;
+			if (isPicoPendingResult(result)) throw result.promise;
+			if (isPicoErrorResult(result)) throw result.error;
+			return result.value;
+		},
+		getAsync: <TState>(handler: InternalReadOnlyPicoHandler<TState>) => {
+			const result = handler.read(store).result;
+			if (isPicoPendingResult(result)) return result.promise;
+			if (isPicoErrorResult(result)) return result.promise;
+			return Promise.resolve(result.value);
+		},
 		set: (handler, value) => handler.save(store, value),
 		reset: (handler) => handler.reset(store)
 	});

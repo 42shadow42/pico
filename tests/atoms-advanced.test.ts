@@ -21,7 +21,7 @@ describe('atom-advanced', () => {
 
 			const actual = handler.read(store);
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 
@@ -41,7 +41,7 @@ describe('atom-advanced', () => {
 
 			const actual = handler.read(store);
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 
@@ -63,16 +63,16 @@ describe('atom-advanced', () => {
 
 			const actual = handler.read(store);
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toStrictEqual(promiseHandler.promise);
-			expect(actual.promise?.status).toBe('pending');
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actual);
 
 			promiseHandler.resolver(defaultValue);
-			await actual.promise;
+			await actual.result.promise;
 
-			expect(actual.value).toBe(expected);
-			expect(actual.promise?.status).toBe('resolved');
+			expect(actual.result.value).toBe(expected);
+			expect(actual.result.promise?.status).toBe('resolved');
 		});
 
 		it('should apply atom promise handler errors', async () => {
@@ -93,19 +93,19 @@ describe('atom-advanced', () => {
 
 			const actual = handler.read(store);
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toStrictEqual(promiseHandler.promise);
-			expect(actual.promise?.status).toBe('pending');
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actual);
 
 			promiseHandler.rejecter(error);
 			try {
-				await actual.promise;
+				await actual.result.promise;
 			} catch {}
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise?.status).toBe('rejected');
-			expect(actual.error).toBe(expected);
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise?.status).toBe('rejected');
+			expect(actual.result.error).toBe(expected);
 		});
 
 		it('should apply nested atom handler', () => {
@@ -127,7 +127,7 @@ describe('atom-advanced', () => {
 
 			const actual = handler.read(store);
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 	});
@@ -156,16 +156,16 @@ describe('atom-advanced', () => {
 			);
 			const actual = handler.read(store);
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toStrictEqual(promiseHandler.promise);
-			expect(actual.promise?.status).toBe('pending');
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actual);
 
 			promiseHandler.resolver(savedValue);
-			await actual.promise;
+			await actual.result.promise;
 
-			expect(actual.value).toBe(expected);
-			expect(actual.promise?.status).toBe('resolved');
+			expect(actual.result.value).toBe(expected);
+			expect(actual.result.promise?.status).toBe('resolved');
 		});
 
 		it('should reset unresolved handler promise values', async () => {
@@ -173,7 +173,6 @@ describe('atom-advanced', () => {
 			let promiseHandler = createPromise<string, void>();
 
 			const key = 'outer-handler';
-			const defaultValue = 'basic-default';
 			const savedValue = 'basic-value';
 			const expected = savedValue;
 
@@ -188,16 +187,16 @@ describe('atom-advanced', () => {
 			handler.reset(store);
 			const actual = handler.read(store);
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toStrictEqual(promiseHandler.promise);
-			expect(actual.promise?.status).toBe('pending');
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actual);
 
 			promiseHandler.resolver(savedValue);
-			await actual.promise;
+			await actual.result.promise;
 
-			expect(actual.value).toBe(expected);
-			expect(actual.promise?.status).toBe('resolved');
+			expect(actual.result.value).toBe(expected);
+			expect(actual.result.promise?.status).toBe('resolved');
 		});
 	});
 
@@ -216,7 +215,7 @@ describe('atom-advanced', () => {
 			handler.reset(store);
 			const actual = handler.read(store);
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 
@@ -234,7 +233,7 @@ describe('atom-advanced', () => {
 			handler.reset(store);
 			const actual = handler.read(store);
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 
@@ -254,16 +253,16 @@ describe('atom-advanced', () => {
 			handler.reset(store);
 			const actual = handler.read(store);
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toStrictEqual(promiseHandler.promise);
-			expect(actual.promise?.status).toBe('pending');
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actual);
 
 			promiseHandler.resolver(defaultValue);
-			await actual.promise;
+			await actual.result.promise;
 
-			expect(actual.value).toBe(expected);
-			expect(actual.promise?.status).toBe('resolved');
+			expect(actual.result.value).toBe(expected);
+			expect(actual.result.promise?.status).toBe('resolved');
 		});
 
 		it('should reset unitialized promise errors', async () => {
@@ -282,19 +281,19 @@ describe('atom-advanced', () => {
 			handler.reset(store);
 			const actual = handler.read(store);
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toStrictEqual(promiseHandler.promise);
-			expect(actual.promise?.status).toBe('pending');
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actual);
 
 			promiseHandler.rejecter(defaultError);
 			try {
-				await actual.promise;
+				await actual.result.promise;
 			} catch {}
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise?.status).toBe('rejected');
-			expect(actual.error).toBe(expected);
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise?.status).toBe('rejected');
+			expect(actual.result.error).toBe(expected);
 		});
 
 		it('should reset unitialized handler values', () => {
@@ -315,7 +314,7 @@ describe('atom-advanced', () => {
 			handler.reset(store);
 			const actual = handler.read(store);
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 	});
@@ -464,7 +463,7 @@ describe('atom-advanced', () => {
 
 			const picoValue = atomHandler.read(store);
 			promiseHandler.resolver(defaultValue);
-			await picoValue.promise;
+			await picoValue.result.promise;
 			store.deletePicoValue(key);
 		});
 
@@ -579,18 +578,18 @@ describe('atom-advanced', () => {
 			});
 
 			const value = handler.read(store);
-			const firstPromise = value.promise;
+			const firstPromise = value.result.promise;
 			handler.save(store, secondHandler.promise);
 
 			secondHandler.resolver(secondValue);
-			await value.promise;
+			await value.result.promise;
 
-			expect(value.value).toBe(secondValue);
+			expect(value.result.value).toBe(secondValue);
 
 			firstHandler.resolver(firstValue);
 			await firstPromise;
 
-			expect(value.value).toBe(secondValue);
+			expect(value.result.value).toBe(secondValue);
 		});
 
 		it('should handle error race conditions', async () => {
@@ -608,22 +607,22 @@ describe('atom-advanced', () => {
 			});
 
 			const value = handler.read(store);
-			const firstPromise = value.promise;
+			const firstPromise = value.result.promise;
 			handler.save(store, secondHandler.promise);
 
 			secondHandler.rejecter(secondError);
 			try {
-				await value.promise;
+				await value.result.promise;
 			} catch {}
 
-			expect(value.error).toBe(secondError);
+			expect(value.result.error).toBe(secondError);
 
 			firstHandler.rejecter(firstError);
 			try {
 				await firstPromise;
 			} catch {}
 
-			expect(value.error).toBe(secondError);
+			expect(value.result.error).toBe(secondError);
 		});
 	});
 });

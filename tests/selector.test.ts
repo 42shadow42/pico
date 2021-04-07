@@ -39,7 +39,7 @@ describe('selector', () => {
 
 			const actual = handler.read(store);
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 
@@ -64,14 +64,14 @@ describe('selector', () => {
 
 			const actual = handler.read(store);
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toBeDefined();
-			expect(actual.promise?.status).toBe('pending');
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise).toBeDefined();
+			expect(actual.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actual);
 
-			await actual.promise;
+			await actual.result.promise;
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 
@@ -97,15 +97,15 @@ describe('selector', () => {
 
 			const actual = handler.read(store);
 
-			expect(actual.value).toBeUndefined();
-			expect(actual.promise).toStrictEqual(promiseHandler.promise);
-			expect(actual.promise?.status).toBe('pending');
+			expect(actual.result.value).toBeUndefined();
+			expect(actual.result.promise).toStrictEqual(promiseHandler.promise);
+			expect(actual.result.promise?.status).toBe('pending');
 			expect(store.treeState[key]).toBe(actual);
 
 			promiseHandler.resolver(defaultValue);
-			await actual.promise;
+			await actual.result.promise;
 
-			expect(actual.value).toBe(expected);
+			expect(actual.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actual);
 		});
 	});
@@ -131,7 +131,7 @@ describe('selector', () => {
 			const initial = handler.read(store);
 			atomHandler.save(store, value);
 
-			expect(initial.value).toBe(expected);
+			expect(initial.result.value).toBe(expected);
 		});
 
 		it('should track changes to selectors', () => {
@@ -160,7 +160,7 @@ describe('selector', () => {
 			const initial = handler.read(store);
 			atomHandler.save(store, value);
 
-			expect(initial.value).toBe(expected);
+			expect(initial.result.value).toBe(expected);
 		});
 	});
 
@@ -179,7 +179,7 @@ describe('selector', () => {
 
 			let handler = selector<string>({
 				key,
-				get: ({ get }) => get<string>(atomHandler) as string,
+				get: ({ get }) => get(atomHandler),
 				set: ({ set }, value) => set<string>(atomHandler, value),
 				reset: ({ reset }) => reset(atomHandler)
 			});
@@ -187,12 +187,12 @@ describe('selector', () => {
 			handler.save(store, value);
 			const actualSelector = handler.read(store);
 
-			expect(actualSelector.value).toBe(expected);
+			expect(actualSelector.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actualSelector);
 
 			const actualAtom = handler.read(store);
 
-			expect(actualAtom.value).toBe(expected);
+			expect(actualAtom.result.value).toBe(expected);
 		});
 	});
 
@@ -211,7 +211,7 @@ describe('selector', () => {
 
 			let handler = selector<string>({
 				key,
-				get: ({ get }) => get<string>(atomHandler) as string,
+				get: ({ get }) => get(atomHandler),
 				set: ({ set }, value) => set<string>(atomHandler, value),
 				reset: ({ reset }) => reset(atomHandler)
 			});
@@ -220,12 +220,12 @@ describe('selector', () => {
 			handler.reset(store);
 			const actualSelector = handler.read(store);
 
-			expect(actualSelector.value).toBe(expected);
+			expect(actualSelector.result.value).toBe(expected);
 			expect(store.treeState[key]).toBe(actualSelector);
 
 			const actualAtom = handler.read(store);
 
-			expect(actualAtom.value).toBe(expected);
+			expect(actualAtom.result.value).toBe(expected);
 		});
 	});
 });

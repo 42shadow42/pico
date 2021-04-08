@@ -1,4 +1,4 @@
-import { selectorFamily } from '../src/core/selectors';
+import { selectorFamily } from '../src/core/families';
 
 describe('selector-family', () => {
 	describe('initialize', () => {

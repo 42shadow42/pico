@@ -1,4 +1,4 @@
-import { atomFamily } from '../src/core/atoms';
+import { atomFamily } from '../src/core/families';
 
 describe('atom-family', () => {
 	describe('initialize', () => {

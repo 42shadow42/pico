@@ -10,8 +10,7 @@ import {
 	isPicoPendingResult,
 	PicoResult,
 	PicoValue,
-	PicoValueSubscriber,
-	PromiseStatus
+	PicoValueSubscriber
 } from './value';
 
 export type PicoSetter<TState> = (value: ValueUpdater<TState>) => void;

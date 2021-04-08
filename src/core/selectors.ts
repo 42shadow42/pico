@@ -1,15 +1,8 @@
-import isPromise from 'is-promise';
-import { atom } from './atoms';
 import {
 	InternalReadOnlyPicoHandler,
 	InternalReadWritePicoHandler
 } from './handler';
-import {
-	FamilyHandler,
-	PicoGetterProps,
-	PicoWriterProps,
-	ValueUpdater
-} from './shared';
+import { PicoGetterProps, PicoWriterProps, ValueUpdater } from './shared';
 import { PicoStore } from './store';
 import {
 	isPicoErrorResult,
@@ -36,19 +29,6 @@ export interface ReadOnlySelectorConfig<TState> {
 export type ReadWriteSelectorConfig<TState> = ReadOnlySelectorConfig<TState> & {
 	set: SelectorWriter<TState>;
 	reset: SelectorReset;
-};
-
-export interface ReadOnlySelectorFamilyConfig<TState> {
-	key: string;
-	get: (key: string) => SelectorSource<TState>;
-	effects?: PicoEffect<TState>[];
-}
-
-export type ReadWriteSelectorFamilyConfig<
-	TState
-> = ReadOnlySelectorFamilyConfig<TState> & {
-	set: (key: string) => SelectorWriter<TState>;
-	reset: (key: string) => SelectorReset;
 };
 
 export interface SelectorLoaderResult<TState> {
@@ -188,81 +168,4 @@ export function selector<TState>(
 	return {
 		read: createReader(key, get)
 	};
-}
-
-function isReadWriteSelectorFamilyConfig<TState>(
-	options:
-		| ReadOnlySelectorFamilyConfig<TState>
-		| ReadWriteSelectorFamilyConfig<TState>
-): options is ReadWriteSelectorFamilyConfig<TState> {
-	return (options as ReadWriteSelectorFamilyConfig<TState>).set !== undefined;
-}
-
-export function selectorFamily<TState>(
-	options: ReadWriteSelectorFamilyConfig<TState>
-): ((key: string) => InternalReadWritePicoHandler<TState>) &
-	FamilyHandler<TState>;
-export function selectorFamily<TState>(
-	options: ReadOnlySelectorFamilyConfig<TState>
-): ((key: string) => InternalReadOnlyPicoHandler<TState>) &
-	FamilyHandler<TState>;
-
-export function selectorFamily<TState>(
-	options:
-		| ReadWriteSelectorFamilyConfig<TState>
-		| ReadOnlySelectorFamilyConfig<TState>
-) {
-	const { key, get, effects = [] } = options;
-
-	const ids = atom<string[]>({ key: `${key}:keys`, default: [] });
-	const tracker: PicoEffect<TState> = {
-		onCreated: ({ key, get, set }) => {
-			const createdId = key.split('::')[1];
-			set(ids, [...get(ids), createdId]);
-		},
-		onDeleting: ({ key, get, set }) => {
-			const deletedId = key.split('::')[1];
-			set(
-				ids,
-				get(ids).filter((id) => deletedId !== id)
-			);
-		}
-	};
-	const effectsWithTracker = [...effects, tracker];
-
-	if (isReadWriteSelectorFamilyConfig(options)) {
-		const { set, reset } = options;
-		const accessor = (id: string) =>
-			selector({
-				key: `${key}::${id}`,
-				get: get(id),
-				set: set(id),
-				reset: reset(id),
-				effects: effectsWithTracker
-			});
-		const iterator = selector({
-			key: `${key}:iter`,
-			get: ({ get }) => {
-				return [...get(ids)].map((id) => get(accessor(id)));
-			}
-		});
-		accessor.ids = ids;
-		accessor.iterator = iterator;
-		return accessor;
-	}
-	const accessor = (id: string) =>
-		selector({
-			key: `${key}::${id}`,
-			get: get(id),
-			effects: effectsWithTracker
-		});
-	const iterator = selector({
-		key: `${key}:iter`,
-		get: ({ get }) => {
-			return [...get(ids)].map((id) => get(accessor(id)));
-		}
-	});
-	accessor.ids = ids;
-	accessor.iterator = iterator;
-	return accessor;
 }

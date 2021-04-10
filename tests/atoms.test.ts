@@ -23,6 +23,23 @@ describe('atom', () => {
 			expect(store.treeState[key]).toBe(actual);
 		});
 
+		it('should allow null defaults', () => {
+			let store = new PicoStore();
+			const key = 'outer-handler';
+			const defaultValue = null;
+			const expected = defaultValue;
+
+			let handler = atom({
+				key,
+				default: defaultValue
+			});
+
+			const actual = handler.read(store);
+
+			expect(actual.result.value).toBe(expected);
+			expect(store.treeState[key]).toBe(actual);
+		});
+
 		it('should apply function defaults', () => {
 			let store = new PicoStore();
 			const key = 'outer-handler';
@@ -107,6 +124,25 @@ describe('atom', () => {
 			const expected = savedValue;
 
 			let handler = atom({
+				key,
+				default: defaultValue
+			});
+
+			handler.save(store, savedValue);
+			const actual = handler.read(store);
+
+			expect(actual.result.value).toBe(expected);
+			expect(store.treeState[key]).toBe(actual);
+		});
+
+		it('should write null values', () => {
+			let store = new PicoStore();
+			const key = 'outer-handler';
+			const defaultValue = 'basic-default';
+			const savedValue = null;
+			const expected = savedValue;
+
+			let handler = atom<string | null>({
 				key,
 				default: defaultValue
 			});
@@ -246,6 +282,27 @@ describe('atom', () => {
 			expect(store.treeState[key]).toBe(actual);
 		});
 
+		it('should overwrite null values', () => {
+			let store = new PicoStore();
+			const key = 'outer-handler';
+			const defaultValue = 'basic-default';
+			const savedValue = null;
+			const expected = savedValue;
+
+			let handler = atom<string | null>({
+				key,
+				default: defaultValue
+			});
+
+			const initial = handler.read(store);
+			handler.save(store, savedValue);
+			const actual = handler.read(store);
+
+			expect(actual).toBe(initial);
+			expect(actual.result.value).toBe(expected);
+			expect(store.treeState[key]).toBe(actual);
+		});
+
 		it('should overwrite function values', () => {
 			let store = new PicoStore();
 			const key = 'outer-handler';
@@ -369,6 +426,26 @@ describe('atom', () => {
 			const expected = defaultValue;
 
 			let handler = atom({
+				key,
+				default: defaultValue
+			});
+
+			handler.save(store, savedValue);
+			handler.reset(store);
+			const actual = handler.read(store);
+
+			expect(actual.result.value).toBe(expected);
+			expect(store.treeState[key]).toBe(actual);
+		});
+
+		it('should reset null values', () => {
+			let store = new PicoStore();
+			const key = 'outer-handler';
+			const defaultValue = null;
+			const savedValue = 'basic-value';
+			const expected = defaultValue;
+
+			let handler = atom<string | null>({
 				key,
 				default: defaultValue
 			});

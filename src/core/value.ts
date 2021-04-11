@@ -249,9 +249,6 @@ export class PicoValue<TState> {
 				}
 
 				this.update(result.value, result.dependencies, loader);
-				dependencies.forEach((dependency) =>
-					dependency.subscribe(watcher)
-				);
 			}
 		};
 

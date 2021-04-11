@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
 	InternalReadWritePicoHandler,
 	InternalReadOnlyPicoHandler
@@ -77,25 +77,30 @@ export const usePicoCallback = function <TFunction extends Function>(
 	callback: PicoCallback<TFunction>
 ): TFunction {
 	const store = useContext(InternalPicoContext);
-	const props: PicoWriterProps = {
-		get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) => {
-			const result = handler.read(store).result;
-			if (isPicoPendingResult(result)) throw result.promise;
-			if (isPicoErrorResult(result)) throw result.error;
-			return result.value;
-		},
-		getAsync: <TState>(handler: InternalReadOnlyPicoHandler<TState>) => {
-			const result = handler.read(store).result;
-			if (isPicoPendingResult(result)) return result.promise;
-			if (isPicoErrorResult(result)) return result.promise;
-			return Promise.resolve(result.value);
-		},
-		set: <TState>(
-			handler: InternalReadWritePicoHandler<TState>,
-			value: ValueUpdater<TState>
-		) => handler.save(store, value),
-		reset: <TState>(handler: InternalReadWritePicoHandler<TState>) =>
-			handler.reset(store)
-	};
-	return callback(props);
+	const props = useMemo<PicoWriterProps>(() => {
+		return {
+			get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) => {
+				const result = handler.read(store).result;
+				if (isPicoPendingResult(result)) throw result.promise;
+				if (isPicoErrorResult(result)) throw result.error;
+				return result.value;
+			},
+			getAsync: <TState>(
+				handler: InternalReadOnlyPicoHandler<TState>
+			) => {
+				const result = handler.read(store).result;
+				if (isPicoPendingResult(result)) return result.promise;
+				if (isPicoErrorResult(result)) return result.promise;
+				return Promise.resolve(result.value);
+			},
+			set: <TState>(
+				handler: InternalReadWritePicoHandler<TState>,
+				value: ValueUpdater<TState>
+			) => handler.save(store, value),
+			reset: <TState>(handler: InternalReadWritePicoHandler<TState>) =>
+				handler.reset(store)
+		};
+	}, [store]);
+
+	return useMemo(() => callback(props), [props]);
 };

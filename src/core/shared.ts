@@ -21,6 +21,9 @@ export type SetPicoState = <TState>(
 export type ResetPicoState = <TState>(
 	handler: InternalReadWritePicoHandler<TState>
 ) => void;
+export type DeletePicoState = <TState>(
+	handler: InternalReadOnlyPicoHandler<TState>
+) => void;
 export type GetPicoState = <TState>(
 	handler: InternalReadOnlyPicoHandler<TState>
 ) => TState;
@@ -35,4 +38,5 @@ export interface PicoGetterProps {
 export type PicoWriterProps = PicoGetterProps & {
 	set: SetPicoState;
 	reset: ResetPicoState;
+	delete: DeletePicoState;
 };

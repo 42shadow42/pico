@@ -65,14 +65,7 @@ export class PicoStore {
 			dependencies,
 			loader
 		);
-		const tokens = key.split('::');
-		if (tokens.length === 1) {
-			this.treeState[tokens[0]] = picoValue as PicoValue<unknown>;
-		} else {
-			let family = this.treeState[tokens[0]] as PicoFamily<unknown>;
-			if (!family) family = this.treeState[tokens[0]] = {};
-			family[tokens[1]] = picoValue as PicoValue<unknown>;
-		}
+		this.treeState[key] = picoValue as PicoValue<unknown>;
 
 		picoValue.onCreated();
 
@@ -92,14 +85,7 @@ export class PicoStore {
 	};
 
 	resolve = <TState>(key: string) => {
-		const tokens = key.split('::');
-		if (tokens.length === 1)
-			return this.treeState[tokens[0]] as PicoValue<TState> | undefined;
-		const family = this.treeState[tokens[0]] as
-			| PicoFamily<TState>
-			| undefined;
-		if (family) return family[tokens[1]] as PicoValue<TState> | undefined;
-		return undefined;
+		return this.treeState[key] as PicoValue<TState> | undefined;
 	};
 
 	deletePicoValue = (key: string) => {
@@ -108,6 +94,7 @@ export class PicoStore {
 			value.unsubscribe(this.valueSubscriber);
 			value && this.onAtomDeleting(value);
 			value.onDeleting();
+			console.log();
 		}
 		this.treeState[key] = undefined;
 	};

@@ -4,6 +4,7 @@ import { PicoValue } from './value';
 
 export interface InternalReadOnlyPicoHandler<TState> {
 	read: (store: PicoStore) => PicoValue<TState>;
+	delete: (store: PicoStore) => void;
 }
 
 export type InternalReadWritePicoHandler<

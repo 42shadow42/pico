@@ -98,7 +98,9 @@ export const usePicoCallback = function <TFunction extends Function>(
 				value: ValueUpdater<TState>
 			) => handler.save(store, value),
 			reset: <TState>(handler: InternalReadWritePicoHandler<TState>) =>
-				handler.reset(store)
+				handler.reset(store),
+			delete: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
+				handler.delete(store)
 		};
 	}, [store]);
 

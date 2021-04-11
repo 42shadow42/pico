@@ -213,7 +213,8 @@ export class PicoValue<TState> {
 				return Promise.resolve(result.value);
 			},
 			set: (handler, value) => handler.save(this.store, value),
-			reset: (handler) => handler.reset(this.store)
+			reset: (handler) => handler.reset(this.store),
+			delete: (handler) => handler.delete(this.store)
 		};
 	};
 

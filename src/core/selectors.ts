@@ -113,7 +113,8 @@ const createWriter = <TState>(set: SelectorWriter<TState>) => (
 				return Promise.resolve(result.value);
 			},
 			set: (handler, value) => handler.save(store, value),
-			reset: (handler) => handler.reset(store)
+			reset: (handler) => handler.reset(store),
+			delete: (handler) => handler.delete(store)
 		},
 		value
 	);
@@ -134,9 +135,13 @@ const createReset = (reset: SelectorReset) => (store: PicoStore) => {
 			return Promise.resolve(result.value);
 		},
 		set: (handler, value) => handler.save(store, value),
-		reset: (handler) => handler.reset(store)
+		reset: (handler) => handler.reset(store),
+		delete: (handler) => handler.delete(store)
 	});
 };
+
+const createDelete = (key: string) => (store: PicoStore) =>
+	store.deletePicoValue(key);
 
 function isReadWriteSelectorConfig<TState>(
 	options: ReadOnlySelectorConfig<TState> | ReadWriteSelectorConfig<TState>
@@ -161,11 +166,13 @@ export function selector<TState>(
 		return {
 			read: createReader(key, get),
 			save: createWriter(set),
-			reset: createReset(reset)
+			reset: createReset(reset),
+			delete: createDelete(key)
 		};
 	}
 
 	return {
-		read: createReader(key, get)
+		read: createReader(key, get),
+		delete: createDelete(key)
 	};
 }

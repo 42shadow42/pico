@@ -138,6 +138,7 @@ export function atom<TState>({
 		save: (store: PicoStore, value: ValueUpdater<TState>) =>
 			saveState(store, key, value, defaultValue, effects),
 		reset: (store: PicoStore) =>
-			resetState(store, key, defaultValue, effects)
+			resetState(store, key, defaultValue, effects),
+		delete: (store: PicoStore) => store.deletePicoValue(key)
 	};
 }

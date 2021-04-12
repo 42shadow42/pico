@@ -77,32 +77,8 @@ export const usePicoCallback = function <TFunction extends Function>(
 	callback: PicoCallback<TFunction>
 ): TFunction {
 	const store = useContext(InternalPicoContext);
-	const props = useMemo<PicoWriterProps>(() => {
-		return {
-			get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) => {
-				const result = handler.read(store).result;
-				if (isPicoPendingResult(result)) throw result.promise;
-				if (isPicoErrorResult(result)) throw result.error;
-				return result.value;
-			},
-			getAsync: <TState>(
-				handler: InternalReadOnlyPicoHandler<TState>
-			) => {
-				const result = handler.read(store).result;
-				if (isPicoPendingResult(result)) return result.promise;
-				if (isPicoErrorResult(result)) return result.promise;
-				return Promise.resolve(result.value);
-			},
-			set: <TState>(
-				handler: InternalReadWritePicoHandler<TState>,
-				value: ValueUpdater<TState>
-			) => handler.save(store, value),
-			reset: <TState>(handler: InternalReadWritePicoHandler<TState>) =>
-				handler.reset(store),
-			delete: <TState>(handler: InternalReadOnlyPicoHandler<TState>) =>
-				handler.delete(store)
-		};
-	}, [store]);
-
+	const props = useMemo<PicoWriterProps>(() => store.getPicoWriterProps(), [
+		store
+	]);
 	return useMemo(() => callback(props), [props]);
 };

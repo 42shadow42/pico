@@ -1,6 +1,4 @@
 import isPromise from 'is-promise';
-import { result } from 'lodash';
-import { InternalReadOnlyPicoHandler } from './handler';
 import { SelectorLoader, SelectorLoaderResult } from './selectors';
 import { PicoWriterProps } from './shared';
 import { PicoStore } from './store';
@@ -142,7 +140,7 @@ export class PicoValue<TState> {
 			(effect) =>
 				effect.onCreated &&
 				effect.onCreated(
-					Object.assign(this.getPicoWriterProps(), {
+					Object.assign(this.store.getPicoWriterProps(), {
 						value: this,
 						key: this.key
 					})
@@ -156,7 +154,7 @@ export class PicoValue<TState> {
 			(effect) =>
 				effect.onDeleting &&
 				effect.onDeleting(
-					Object.assign(this.getPicoWriterProps(), {
+					Object.assign(this.store.getPicoWriterProps(), {
 						value: this,
 						key: this.key
 					})
@@ -169,7 +167,7 @@ export class PicoValue<TState> {
 			(effect) =>
 				effect.onUpdating &&
 				effect.onUpdating(
-					Object.assign(this.getPicoWriterProps(), {
+					Object.assign(this.store.getPicoWriterProps(), {
 						value: this,
 						key: this.key
 					})
@@ -185,7 +183,7 @@ export class PicoValue<TState> {
 			(effect) =>
 				effect.onUpdated &&
 				effect.onUpdated(
-					Object.assign(this.getPicoWriterProps(), {
+					Object.assign(this.store.getPicoWriterProps(), {
 						value: this,
 						key: this.key
 					})
@@ -194,28 +192,6 @@ export class PicoValue<TState> {
 		new Set(this.subscribers).forEach(
 			(subscriber) => subscriber.onUpdated && subscriber.onUpdated(this)
 		);
-	};
-
-	private getPicoWriterProps = (): PicoWriterProps => {
-		return {
-			get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) => {
-				const result = handler.read(this.store).result;
-				if (isPicoPendingResult(result)) throw result.promise;
-				if (isPicoErrorResult(result)) throw result.error;
-				return result.value;
-			},
-			getAsync: <TState>(
-				handler: InternalReadOnlyPicoHandler<TState>
-			) => {
-				const result = handler.read(this.store).result;
-				if (isPicoPendingResult(result)) return result.promise;
-				if (isPicoErrorResult(result)) return result.promise;
-				return Promise.resolve(result.value);
-			},
-			set: (handler, value) => handler.save(this.store, value),
-			reset: (handler) => handler.reset(this.store),
-			delete: (handler) => handler.delete(this.store)
-		};
 	};
 
 	private updateDependencies = (

@@ -1,11 +1,15 @@
 import isPromise from 'is-promise';
+import { InternalReadOnlyPicoHandler } from './handler';
 import { SelectorLoader } from './selectors';
+import { PicoWriterProps } from './shared';
 import {
 	PicoValue,
 	PicoEffect,
 	PicoValueSubscriber,
 	PicoValueType,
-	isPicoValue
+	isPicoValue,
+	isPicoPendingResult,
+	isPicoErrorResult
 } from './value';
 
 export interface PicoFamily<T> {
@@ -46,6 +50,28 @@ export class PicoStore {
 					subscriber.onAtomUpdated(picoValue)
 			);
 		}
+	};
+
+	getPicoWriterProps = (): PicoWriterProps => {
+		return {
+			get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) => {
+				const result = handler.read(this).result;
+				if (isPicoPendingResult(result)) throw result.promise;
+				if (isPicoErrorResult(result)) throw result.error;
+				return result.value;
+			},
+			getAsync: <TState>(
+				handler: InternalReadOnlyPicoHandler<TState>
+			) => {
+				const result = handler.read(this).result;
+				if (isPicoPendingResult(result)) return result.promise;
+				if (isPicoErrorResult(result)) return result.promise;
+				return Promise.resolve(result.value);
+			},
+			set: (handler, value) => handler.save(this, value),
+			reset: (handler) => handler.reset(this),
+			delete: (handler) => handler.delete(this)
+		};
 	};
 
 	createPicoValue = <TState>(

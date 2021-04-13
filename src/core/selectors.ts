@@ -100,23 +100,7 @@ const createWriter = <TState>(set: SelectorWriter<TState>) => (
 };
 
 const createReset = (reset: SelectorReset) => (store: PicoStore) => {
-	reset({
-		get: <TState>(handler: InternalReadOnlyPicoHandler<TState>) => {
-			const result = handler.read(store).result;
-			if (isPicoPendingResult(result)) throw result.promise;
-			if (isPicoErrorResult(result)) throw result.error;
-			return result.value;
-		},
-		getAsync: <TState>(handler: InternalReadOnlyPicoHandler<TState>) => {
-			const result = handler.read(store).result;
-			if (isPicoPendingResult(result)) return result.promise;
-			if (isPicoErrorResult(result)) return result.promise;
-			return Promise.resolve(result.value);
-		},
-		set: (handler, value) => handler.save(store, value),
-		reset: (handler) => handler.reset(store),
-		delete: (handler) => handler.delete(store)
-	});
+	reset(store.getPicoWriterProps());
 };
 
 const createDelete = (key: string) => (store: PicoStore) =>

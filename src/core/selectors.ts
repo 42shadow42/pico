@@ -24,7 +24,6 @@ export type SelectorReset = (props: PicoWriterProps) => void;
 export interface ReadOnlySelectorConfig<TState> {
 	key: string;
 	get: SelectorSource<TState>;
-	effects?: PicoEffect<TState>[];
 }
 
 export type ReadWriteSelectorConfig<TState> = ReadOnlySelectorConfig<TState> & {

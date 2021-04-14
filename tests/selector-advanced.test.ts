@@ -448,4 +448,117 @@ describe('selector-advanced', () => {
 			expect(actualAtom.result.value).toBe(expected);
 		});
 	});
+
+	describe('track', () => {
+		it('should track post promise synchronous values', async () => {
+			let store = new PicoStore();
+
+			const key = 'outer-handler';
+			const value = 'basic-default';
+			const updatedValue = 'updated-value';
+			const expected = updatedValue;
+
+			const innerHandler = atom({
+				key: 'inner-handler',
+				default: value
+			});
+
+			let handler = selector({
+				key: 'outer-handler',
+				get: ({ get }) => {
+					return Promise.resolve().then(() => {
+						return get(innerHandler);
+					});
+				}
+			});
+
+			const actual = handler.read(store);
+
+			await actual.result.promise;
+
+			expect(actual.result.value).toBe(value);
+			expect(store.treeState[key]).toBe(actual);
+
+			innerHandler.save(store, updatedValue);
+
+			await actual.result.promise;
+
+			expect(actual.result.value).toBe(expected);
+		});
+
+		it('should track post promise synchronous values asynchronously', async () => {
+			let store = new PicoStore();
+
+			const key = 'outer-handler';
+			const value = 'basic-default';
+			const updatedValue = 'updated-value';
+			const expected = updatedValue;
+
+			const innerHandler = atom({
+				key: 'inner-handler',
+				default: value
+			});
+
+			let handler = selector({
+				key: 'outer-handler',
+				get: ({ getAsync }) => {
+					return Promise.resolve().then(() => {
+						return getAsync(innerHandler);
+					});
+				}
+			});
+
+			const actual = handler.read(store);
+
+			await actual.result.promise;
+
+			expect(actual.result.value).toBe(value);
+			expect(store.treeState[key]).toBe(actual);
+
+			innerHandler.save(store, updatedValue);
+
+			await actual.result.promise;
+
+			expect(actual.result.value).toBe(expected);
+		});
+
+		it('should track post promise asynchronous values asynchronously', async () => {
+			let store = new PicoStore();
+			const promiseHandler = createPromise<string, void>();
+
+			const key = 'outer-handler';
+			const value = 'basic-default';
+			const updatedValue = 'updated-value';
+			const expected = updatedValue;
+
+			const innerHandler = atom({
+				key: 'inner-handler',
+				default: value
+			});
+
+			let handler = selector({
+				key: 'outer-handler',
+				get: ({ getAsync }) => {
+					return Promise.resolve().then(() => {
+						return getAsync(innerHandler);
+					});
+				}
+			});
+
+			const actual = handler.read(store);
+
+			await actual.result.promise;
+
+			expect(actual.result.value).toBe(value);
+			expect(store.treeState[key]).toBe(actual);
+
+			innerHandler.save(store, promiseHandler.promise);
+
+			promiseHandler.resolver(updatedValue);
+
+			await actual.result.promise;
+
+			expect(actual.result.value).toBe(expected);
+		});
+	});
 });

@@ -1,4 +1,5 @@
 import isPromise from 'is-promise';
+import { ObservableSet } from './observable-set';
 import { SelectorLoader, SelectorLoaderResult } from './selectors';
 import { PicoWriterProps } from './shared';
 import { PicoStore } from './store';
@@ -78,7 +79,7 @@ export class PicoValue<TState> {
 	private store: PicoStore;
 	private effects: PicoEffect<TState>[];
 	private subscribers = new Set<PicoValueSubscriber<TState>>();
-	private dependencies: Set<PicoValue<unknown>>;
+	private dependencies: ObservableSet<PicoValue<unknown>>;
 
 	constructor(
 		key: string,
@@ -86,7 +87,7 @@ export class PicoValue<TState> {
 		store: PicoStore,
 		promiseOrValue: TState | Promise<TState>,
 		effects: PicoEffect<TState>[],
-		dependencies: Set<PicoValue<unknown>>,
+		dependencies: ObservableSet<PicoValue<unknown>>,
 		loader?: SelectorLoader<TState>
 	) {
 		this.key = key;
@@ -100,20 +101,22 @@ export class PicoValue<TState> {
 
 	getEffects = () => [...this.effects];
 
-	getDependencies = (): Set<PicoValue<unknown>> => {
-		return new Set<PicoValue<unknown>>(this.dependencies);
+	getDependencies = (): ObservableSet<PicoValue<unknown>> => {
+		return new ObservableSet<PicoValue<unknown>>(this.dependencies);
 	};
 
 	update = (
 		promiseOrValue: TState | Promise<TState>,
-		dependencies: Set<PicoValue<unknown>>,
+		dependencies: ObservableSet<PicoValue<unknown>>,
 		loader?: SelectorLoader<TState>,
 		fireEvents = true
 	) => {
 		this.updateDependencies(dependencies, loader);
 
 		if (isPromise(promiseOrValue)) {
+			fireEvents && this.onValueUpdating();
 			this.updatePromise(promiseOrValue);
+			fireEvents && this.onValueUpdated();
 			return;
 		}
 
@@ -195,7 +198,7 @@ export class PicoValue<TState> {
 	};
 
 	private updateDependencies = (
-		dependencies: Set<PicoValue<unknown>>,
+		dependencies: ObservableSet<PicoValue<unknown>>,
 		loader?: SelectorLoader<TState>
 	) => {
 		const watcher: PicoValueSubscriber<any> = {
@@ -212,14 +215,14 @@ export class PicoValue<TState> {
 				) {
 					result = {
 						value: picoValue.result.promise,
-						dependencies: new Set<PicoValue<unknown>>([
+						dependencies: new ObservableSet<PicoValue<unknown>>([
 							picoValue as PicoValue<unknown>
 						])
 					};
 				} else {
 					result = {
 						value: picoValue.result.value,
-						dependencies: new Set<PicoValue<unknown>>([
+						dependencies: new ObservableSet<PicoValue<unknown>>([
 							picoValue as PicoValue<unknown>
 						])
 					};
@@ -229,9 +232,15 @@ export class PicoValue<TState> {
 			}
 		};
 
+		const setWatcher = (value: PicoValue<unknown>) => {
+			value.subscribe(watcher);
+		};
+
 		dependencies.forEach((dependency) => {
 			dependency.subscribe(watcher);
 		});
+
+		dependencies.subscribe(setWatcher);
 
 		this.dependencies = dependencies;
 	};
@@ -276,6 +285,14 @@ export class PicoValue<TState> {
 			};
 			// this.onValueUpdated();
 		});
+	};
+
+	toJSON = () => {
+		return {
+			key: this.key,
+			type: this.type,
+			result: this.result
+		};
 	};
 }
 

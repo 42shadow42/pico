@@ -11,6 +11,7 @@ import {
 } from './value';
 import { isFunction } from 'lodash';
 import { DefaultValue, ValueUpdater } from './shared';
+import { ObservableSet } from './observable-set';
 
 export interface AtomConfig<TState> {
 	key: string;
@@ -23,7 +24,7 @@ function resolveDefaultValue<TState>(
 	defaultValue: DefaultValue<TState>
 ) {
 	let value: TState | Promise<TState>;
-	const dependencies = new Set<PicoValue<unknown>>();
+	const dependencies = new ObservableSet<PicoValue<unknown>>();
 	if (isInternalReadOnlyPicoHandler<TState>(defaultValue)) {
 		const picoValue = defaultValue.read(store);
 		dependencies.add(picoValue as PicoValue<unknown>);
@@ -48,7 +49,7 @@ function resolveValueUpdater<TState>(
 	effects: PicoEffect<TState>[]
 ) {
 	let newValue: TState | Promise<TState>;
-	let dependencies = new Set<PicoValue<unknown>>();
+	let dependencies = new ObservableSet<PicoValue<unknown>>();
 	if (isInternalReadOnlyPicoHandler<TState>(value)) {
 		const picoValue = value.read(store);
 		const result = picoValue.result;

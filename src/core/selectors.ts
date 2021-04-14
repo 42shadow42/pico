@@ -1,3 +1,4 @@
+import { ObservableSet } from './observable-set';
 import {
 	InternalReadOnlyPicoHandler,
 	InternalReadWritePicoHandler
@@ -33,7 +34,7 @@ export type ReadWriteSelectorConfig<TState> = ReadOnlySelectorConfig<TState> & {
 
 export interface SelectorLoaderResult<TState> {
 	value: TState | Promise<TState>;
-	dependencies: Set<PicoValue<unknown>>;
+	dependencies: ObservableSet<PicoValue<unknown>>;
 }
 export type SelectorLoader<TState> = () => SelectorLoaderResult<TState>;
 
@@ -46,7 +47,7 @@ const createReader = <TState>(key: string, get: SelectorSource<TState>) => (
 	}
 
 	const loader: SelectorLoader<TState> = () => {
-		const dependencies = new Set<PicoValue<unknown>>();
+		const dependencies = new ObservableSet<PicoValue<unknown>>();
 		const getValue = <TState>(
 			handler: InternalReadOnlyPicoHandler<TState>
 		) => {

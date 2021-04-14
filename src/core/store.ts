@@ -1,5 +1,6 @@
 import isPromise from 'is-promise';
 import { InternalReadOnlyPicoHandler } from './handler';
+import { ObservableSet } from './observable-set';
 import { SelectorLoader } from './selectors';
 import { PicoWriterProps } from './shared';
 import {
@@ -79,7 +80,7 @@ export class PicoStore {
 		type: PicoValueType,
 		valueOrPromise: TState | Promise<TState>,
 		effects: PicoEffect<TState>[],
-		dependencies: Set<PicoValue<unknown>>,
+		dependencies: ObservableSet<PicoValue<unknown>>,
 		loader?: SelectorLoader<TState>
 	): PicoValue<TState> => {
 		const picoValue = new PicoValue<TState>(
@@ -120,7 +121,6 @@ export class PicoStore {
 			value.unsubscribe(this.valueSubscriber);
 			value && this.onAtomDeleting(value);
 			value.onDeleting();
-			console.log();
 		}
 		this.treeState[key] = undefined;
 	};

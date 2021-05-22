@@ -1,6 +1,5 @@
 import { createPromise } from '../test-utils/promise';
-import { atom } from '../src/core/atoms';
-import { PicoStore } from '../src/core/store';
+import { atom, PicoStore } from '../src/core';
 
 process.on('unhandledRejection', console.warn);
 

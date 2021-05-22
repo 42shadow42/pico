@@ -1,18 +1,10 @@
-import { ValueUpdater } from './shared';
-import { PicoStore } from './store';
-import { PicoValue } from './value';
+import { PicoStore } from '../store';
+import { PicoValue } from '../value';
 
 export interface InternalReadOnlyPicoHandler<TState> {
 	read: (store: PicoStore) => PicoValue<TState>;
 	delete: (store: PicoStore) => void;
 }
-
-export type InternalReadWritePicoHandler<
-	TState
-> = InternalReadOnlyPicoHandler<TState> & {
-	save: (store: PicoStore, value: ValueUpdater<TState>) => void;
-	reset: (store: PicoStore) => void;
-};
 
 export function isInternalReadOnlyPicoHandler<TState>(
 	handler: any

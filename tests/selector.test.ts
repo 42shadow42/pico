@@ -1,6 +1,4 @@
-import { atom } from '../src/core/atoms';
-import { selector } from '../src/core/selectors';
-import { PicoStore } from '../src/core/store';
+import { atom, selector, PicoStore } from '../src/core';
 import { createPromise } from '../test-utils/promise';
 
 describe('selector', () => {

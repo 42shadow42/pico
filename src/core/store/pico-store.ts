@@ -1,37 +1,19 @@
 import isPromise from 'is-promise';
-import { InternalReadOnlyPicoHandler } from './handler';
-import { ObservableSet } from './observable-set';
-import { SelectorLoader } from './selectors';
-import { PicoWriterProps } from './shared';
+import { InternalReadOnlyPicoHandler } from '../handler';
+import { PicoWriterProps } from '../handler';
+import { ObservableSet } from '../observable-set';
+import { SelectorLoader } from '../selectors';
 import {
-	PicoValue,
-	PicoEffect,
-	PicoValueSubscriber,
-	PicoValueType,
-	isPicoValue,
+	isPicoErrorResult,
 	isPicoPendingResult,
-	isPicoErrorResult
-} from './value';
-
-export interface PicoFamily<T> {
-	[key: string]: PicoValue<T> | undefined;
-}
-
-export interface InternalTreeState {
-	[key: string]: PicoValue<unknown> | PicoFamily<unknown> | undefined;
-}
-
-type AtomCreatedHandler = (value: PicoValue<unknown>) => void;
-type AtomDeletingHandler = (value: PicoValue<unknown>) => void;
-type AtomUpdatingHandler = (value: PicoValue<unknown>) => void;
-type AtomUpdatedHandler = (value: PicoValue<unknown>) => void;
-
-export interface PicoStoreSubscriber {
-	onAtomCreated?: AtomCreatedHandler;
-	onAtomDeleting?: AtomDeletingHandler;
-	onAtomUpdating?: AtomUpdatingHandler;
-	onAtomUpdated?: AtomUpdatedHandler;
-}
+	isPicoValue,
+	PicoEffect,
+	PicoValue,
+	PicoValueSubscriber,
+	PicoValueType
+} from '../value';
+import { PicoStoreSubscriber } from './subscriber';
+import { InternalTreeState } from './tree-state';
 
 export class PicoStore {
 	treeState: InternalTreeState = {};

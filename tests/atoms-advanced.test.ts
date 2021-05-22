@@ -1,6 +1,4 @@
-import { PicoEffect } from '../src/core/value';
-import { atom } from '../src/core/atoms';
-import { PicoStore } from '../src/core/store';
+import { PicoStore, atom, PicoEffect } from '../src/core';
 import { createPromise } from '../test-utils/promise';
 
 describe('atom-advanced', () => {

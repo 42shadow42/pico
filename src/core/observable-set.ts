@@ -3,6 +3,10 @@ export type ObservableSetSubscriber<T> = (value: T) => void;
 export class ObservableSet<T> extends Set<T> {
 	private subscribers = new Set<ObservableSetSubscriber<T>>();
 
+	constructor(values?: Iterable<T> | null) {
+		super(values);
+	}
+
 	add = (value: T): this => {
 		new Set(this.subscribers).forEach((subscriber) => subscriber(value));
 		return super.add(value);

@@ -1,75 +1,17 @@
 import isPromise from 'is-promise';
-import { ObservableSet } from './observable-set';
-import { SelectorLoader, SelectorLoaderResult } from './selectors';
-import { PicoWriterProps } from './shared';
-import { PicoStore } from './store';
+import { ObservableSet } from '../observable-set';
+import { SelectorLoader, SelectorLoaderResult } from '../selectors';
+import { PicoStore } from '../store';
+import { PicoEffect } from './pico-effect';
+import { PromiseStatus } from './pico-promise';
+import {
+	isPicoErrorResult,
+	isPicoPendingResult,
+	PicoResult
+} from './pico-result';
+import { PicoValueSubscriber } from './pico-value-subscriber';
 
-export type PromiseStatus = 'pending' | 'resolved' | 'rejected';
 export type PicoValueType = 'atom' | 'selector';
-export type ValueEvent<TState> = PicoWriterProps & {
-	key: string;
-	value: PicoValue<TState>;
-};
-
-export type PicoEffectHandler<TState> = (props: ValueEvent<TState>) => void;
-export type ValueUpdatingHandler<TState> = (
-	picoValue: PicoValue<TState>
-) => void;
-export type ValueUpdatedHandler<TState> = (
-	picoValue: PicoValue<TState>
-) => void;
-
-export interface PicoValueSubscriber<TState> {
-	onUpdating?: ValueUpdatingHandler<TState>;
-	onUpdated?: ValueUpdatedHandler<TState>;
-}
-
-export interface PicoEffect<TState> {
-	onCreated?: PicoEffectHandler<TState>;
-	onUpdating?: PicoEffectHandler<TState>;
-	onUpdated?: PicoEffectHandler<TState>;
-	onDeleting?: PicoEffectHandler<TState>;
-}
-
-export type PicoPromise<TState> = Promise<TState> & { status: PromiseStatus };
-
-export type PicoPendingResult<TState> = {
-	value: undefined;
-	promise: PicoPromise<TState>;
-	error: undefined;
-};
-export type PicoErrorResult<TState> = {
-	value: undefined;
-	promise: PicoPromise<TState>;
-	error: unknown;
-};
-export type PicoValueResult<TState> = {
-	value: TState;
-	promise: PicoPromise<TState> | undefined;
-	error: undefined;
-};
-export type PicoResult<TState> =
-	| PicoPendingResult<TState>
-	| PicoErrorResult<TState>
-	| PicoValueResult<TState>;
-
-export function isPicoPendingResult<TState>(
-	result: PicoResult<TState>
-): result is PicoPendingResult<TState> {
-	return !!result.promise && result.promise.status === 'pending';
-}
-
-export function isPicoErrorResult<TState>(
-	result: PicoResult<TState>
-): result is PicoErrorResult<TState> {
-	return !!result.promise && result.promise.status === 'rejected';
-}
-
-export function isPicoValueResult<TState>(
-	result: PicoResult<TState>
-): result is PicoValueResult<TState> {
-	return !!result.value;
-}
 
 export class PicoValue<TState> {
 	key: string;

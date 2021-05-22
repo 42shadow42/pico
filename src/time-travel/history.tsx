@@ -5,9 +5,8 @@ import {
 	useEffect,
 	useState
 } from 'react';
-import { isPicoErrorResult } from 'src/core/value';
-import { InternalPicoContext } from '../core/provider';
-import { PicoStoreSubscriber } from '../core/store';
+import { InternalPicoContext } from '../react/provider';
+import { PicoStoreSubscriber } from '../core';
 
 type Batch = InternalBatchComponent[];
 type InternalBatchComponent = () => void;

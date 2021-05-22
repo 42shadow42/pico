@@ -1,7 +1,6 @@
-import { createContext, ReactNode } from 'react';
-import { PicoStore } from './store';
-
-export const InternalPicoContext = createContext<PicoStore>(new PicoStore());
+import React, { ReactNode } from 'react';
+import { PicoStore } from '../../core';
+import { InternalPicoContext } from './context';
 
 export interface PicoProviderProps {
 	children: ReactNode;
